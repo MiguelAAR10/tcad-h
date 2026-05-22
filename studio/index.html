@@ -81,6 +81,22 @@
       <div id="events" class="events-list"></div>
     </section>
 
+    <section class="graph-panel">
+      <header class="graph-header">
+        <h2>Development Graph</h2>
+        <p class="muted">Per-WP static graph from artifacts. No LLM, no inference.</p>
+        <select id="graph-wp-select" aria-label="Select WP"></select>
+      </header>
+      <div id="graph-summary" class="graph-summary muted">Pick a WP to load its graph.</div>
+      <div id="graph-gates" class="graph-gates"></div>
+      <div id="graph-findings" class="graph-findings"></div>
+      <div id="graph-focus" class="graph-focus"></div>
+      <details id="graph-mermaid-wrap">
+        <summary>Mermaid source</summary>
+        <pre id="graph-mermaid" class="graph-mermaid"></pre>
+      </details>
+    </section>
+
     <section class="timeline-panel">
       <h2>Work Package timeline</h2>
       <p class="muted">Story of what has been built. Click a WP to inspect.</p>

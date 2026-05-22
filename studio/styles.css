@@ -323,3 +323,92 @@ footer {
 .event-actor { color: var(--accent); }
 .event-name  { color: var(--text); }
 .event-wp    { color: var(--text-dim); text-align: right; }
+
+/* Development Graph panel (Phase 3) */
+.graph-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.5rem;
+}
+.graph-header { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.graph-header h2 { margin-right: 0.5rem; }
+#graph-wp-select {
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  min-width: 280px;
+}
+.graph-summary {
+  margin: 0.5rem 0;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-elev-2);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+.graph-gates { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.5rem 0; }
+.gate-chip {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-elev-2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gate-pass    { color: var(--c-finished); border-color: var(--c-finished); }
+.gate-fail    { color: var(--c-cracked);  border-color: var(--c-cracked); }
+.gate-skipped { color: var(--text-dim); }
+.graph-findings, .graph-focus {
+  margin: 0.5rem 0;
+  font-size: 0.78rem;
+}
+.graph-findings h3, .graph-focus h3 {
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0.5rem 0 0.25rem;
+}
+.finding-row {
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-elev-2);
+  border-left: 3px solid var(--c-cracked);
+  border-radius: 3px;
+  margin-bottom: 0.25rem;
+}
+.finding-row .ftype { font-weight: 600; color: var(--c-cracked); }
+.finding-row .floc  { color: var(--text-dim); font-size: 0.72rem; }
+.focus-row {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-elev-2);
+  border-left: 3px solid var(--c-built);
+  border-radius: 3px;
+  margin-bottom: 0.2rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+.focus-row code { font-size: 0.78rem; }
+.focus-row .reason { color: var(--text-dim); font-size: 0.72rem; }
+#graph-mermaid-wrap { margin-top: 0.6rem; }
+#graph-mermaid-wrap summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  padding: 0.2rem 0;
+}
+.graph-mermaid {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.6rem;
+  max-height: 380px;
+  overflow: auto;
+  font-size: 0.74rem;
+  white-space: pre;
+}

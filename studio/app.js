@@ -29,6 +29,169 @@
     return r.json();
   }
 
+  // ----- Phase 3: Development Graph panel --------------------------------
+  let lastGraphWp = null;
+
+  async function fetchGraphList() {
+    const r = await fetch("/api/graphs", { cache: "no-store" });
+    if (!r.ok) return [];
+    return r.json();
+  }
+
+  async function fetchGraph(wp) {
+    const r = await fetch("/api/graph/" + encodeURIComponent(wp), { cache: "no-store" });
+    if (!r.ok) return null;
+    return r.json();
+  }
+
+  async function fetchMermaid(wp) {
+    const r = await fetch("/api/mermaid/" + encodeURIComponent(wp), { cache: "no-store" });
+    if (!r.ok) return null;
+    return r.text();
+  }
+
+  function renderGraphSelector(graphs) {
+    const sel = document.getElementById("graph-wp-select");
+    if (!sel) return;
+    const previous = sel.value;
+    sel.innerHTML = "";
+    if (graphs.length === 0) {
+      const opt = el("option", { text: "(no graphs yet — run tcad_graph static)" });
+      opt.disabled = true;
+      sel.appendChild(opt);
+      return;
+    }
+    const placeholder = el("option", { text: "Select a Work Package…", attrs: { value: "" } });
+    sel.appendChild(placeholder);
+    for (const g of graphs) {
+      const tag = g.review_pass === true ? " · PASS"
+                : g.review_pass === false ? " · FAIL"
+                : "";
+      const opt = el("option", {
+        text: `${g.wp}${tag}`,
+        attrs: { value: g.wp },
+      });
+      sel.appendChild(opt);
+    }
+    if (previous && graphs.some(g => g.wp === previous)) sel.value = previous;
+  }
+
+  function renderGates(graph) {
+    const node = document.getElementById("graph-gates");
+    node.innerHTML = "";
+    const g = graph.gates || {};
+    function chip(text, cls) {
+      const c = el("span", { cls: `gate-chip ${cls}`, text });
+      node.appendChild(c);
+    }
+    if (g.close_present) chip("close PRESENT", "gate-pass");
+    else chip("close MISSING", "gate-fail");
+    if (g.smoke_skipped) {
+      chip("smoke SKIPPED", "gate-skipped");
+    } else if (g.smoke_total > 0) {
+      const ok = g.smoke_passed === g.smoke_total;
+      chip(`smoke ${g.smoke_passed}/${g.smoke_total}`, ok ? "gate-pass" : "gate-fail");
+    }
+    if (g.review_present) {
+      if (g.review_pass) chip("review PASS", "gate-pass");
+      else chip(`review FAIL (${g.review_critical_count || 0})`, "gate-fail");
+    } else {
+      chip("review not run", "gate-skipped");
+    }
+  }
+
+  function renderFindings(graph) {
+    const node = document.getElementById("graph-findings");
+    node.innerHTML = "";
+    const crit = (graph.review_findings || []).filter(f => f.severity === "critical");
+    if (crit.length === 0) return;
+    const h = el("h3", { text: `${crit.length} critical findings` });
+    node.appendChild(h);
+    for (const f of crit) {
+      const row = el("div", { cls: "finding-row" });
+      row.appendChild(el("div", { html: `<span class="ftype">${f.type}</span> — ${escapeHTML(f.message || "")}` }));
+      for (const loc of f.locations || []) {
+        const fp = loc.file || f.file || "?";
+        const ln = loc.line || "?";
+        row.appendChild(el("div", { cls: "floc", text: `at ${fp}:${ln}` }));
+      }
+      node.appendChild(row);
+    }
+  }
+
+  function renderFocus(graph) {
+    const node = document.getElementById("graph-focus");
+    node.innerHTML = "";
+    const focus = graph.reviewer_focus || [];
+    if (focus.length === 0) return;
+    node.appendChild(el("h3", { text: "Reviewer focus" }));
+    for (const f of focus) {
+      const row = el("div", { cls: "focus-row" });
+      row.appendChild(el("code", { text: f.file }));
+      row.appendChild(el("span", { cls: "reason", text: "— " + (f.reason || "") }));
+      node.appendChild(row);
+    }
+  }
+
+  function renderSummary(graph) {
+    const s = graph.summary || {};
+    const node = document.getElementById("graph-summary");
+    node.textContent =
+      `${graph.wp}` +
+      (graph.role ? ` (${graph.role})` : "") +
+      ` — ${s.files_total ?? 0} files (` +
+      `+${s.files_created ?? 0} new, ` +
+      `~${s.files_modified ?? 0} mod, ` +
+      `-${s.files_deleted ?? 0} del). ` +
+      `Diff: +${s.additions ?? 0}/-${s.deletions ?? 0}.`;
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  async function refreshGraphPanel() {
+    const sel = document.getElementById("graph-wp-select");
+    if (!sel) return;
+    try {
+      const graphs = await fetchGraphList();
+      renderGraphSelector(graphs);
+      if (lastGraphWp && graphs.some(g => g.wp === lastGraphWp)) {
+        sel.value = lastGraphWp;
+        await loadGraph(lastGraphWp);
+      }
+    } catch (err) {
+      console.warn("graph refresh failed", err);
+    }
+  }
+
+  async function loadGraph(wp) {
+    lastGraphWp = wp;
+    if (!wp) return;
+    const graph = await fetchGraph(wp);
+    if (!graph) return;
+    renderSummary(graph);
+    renderGates(graph);
+    renderFindings(graph);
+    renderFocus(graph);
+    const mermaid = await fetchMermaid(wp);
+    document.getElementById("graph-mermaid").textContent = mermaid || "(no mermaid)";
+  }
+
+  // Wire selector — runs once, after DOM ready.
+  function wireGraphSelector() {
+    const sel = document.getElementById("graph-wp-select");
+    if (!sel) return;
+    sel.addEventListener("change", (e) => {
+      const wp = e.target.value;
+      if (!wp) return;
+      loadGraph(wp);
+    });
+  }
+  wireGraphSelector();
+
   async function fetchEvents(limit = 10) {
     const r = await fetch("/api/events?limit=" + limit, { cache: "no-store" });
     if (!r.ok) return [];
@@ -278,6 +441,8 @@
       renderConstructionPlan(state);
       const events = await fetchEvents(10);
       renderEvents(events);
+      // Phase 3: graph panel refresh
+      try { await refreshGraphPanel(); } catch (e) { console.warn("graph panel", e); }
       if (lastSelectedRoomId) {
         const room = findRoom(state, lastSelectedRoomId);
         if (room) selectRoom(room);

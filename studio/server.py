@@ -537,6 +537,64 @@ def read_events_tail(n: int = 10) -> list:
     return out
 
 
+def list_wps_with_graphs() -> list[dict]:
+    """Return WPs that have a 16_code_graph.json on disk."""
+    out: list[dict] = []
+    if not HANDOFFS_DIR.exists():
+        return out
+    for child in sorted(HANDOFFS_DIR.iterdir()):
+        if not child.is_dir() or child.name.startswith("_"):
+            continue
+        graph_path = child / "16_code_graph.json"
+        if not graph_path.is_file():
+            continue
+        # Lightweight summary so the UI selector can render fast.
+        try:
+            data = json.loads(graph_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        gates = data.get("gates", {}) or {}
+        review_pass = gates.get("review_pass")
+        out.append({
+            "wp": child.name,
+            "role": data.get("role"),
+            "branch": data.get("branch"),
+            "files_total": data.get("summary", {}).get("files_total", 0),
+            "review_present": gates.get("review_present", False),
+            "review_pass": review_pass,
+            "critical_count": gates.get("review_critical_count", 0),
+            "generated_at": data.get("generated_at"),
+        })
+    return out
+
+
+def read_graph(wp_id: str) -> dict | None:
+    p = HANDOFFS_DIR / wp_id / "16_code_graph.json"
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def read_mermaid(wp_id: str) -> str | None:
+    p = HANDOFFS_DIR / wp_id / "19_mermaid.md"
+    if not p.is_file():
+        return None
+    return p.read_text(encoding="utf-8")
+
+
+def read_review(wp_id: str) -> dict | None:
+    p = HANDOFFS_DIR / wp_id / "review_report.json"
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
 def read_wp_details(wp_id: str) -> dict | None:
     wp_dir = HANDOFFS_DIR / wp_id
     if not wp_dir.is_dir():
@@ -615,6 +673,42 @@ class StudioHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json({"error": "not_found", "id": wp_id}, status=404)
             else:
                 self._send_json(details)
+            return
+
+        # Phase 3 — graph endpoints (read-only, no LLM).
+        if path == "/api/graphs":
+            self._send_json(list_wps_with_graphs())
+            return
+        if path.startswith("/api/graph/"):
+            wp_id = urllib.parse.unquote(path[len("/api/graph/"):])
+            graph = read_graph(wp_id)
+            if graph is None:
+                self._send_json({"error": "graph_not_found", "wp": wp_id}, status=404)
+            else:
+                self._send_json(graph)
+            return
+        if path.startswith("/api/mermaid/"):
+            wp_id = urllib.parse.unquote(path[len("/api/mermaid/"):])
+            mermaid = read_mermaid(wp_id)
+            if mermaid is None:
+                self.send_error(404, f"No mermaid for {wp_id}")
+                return
+            # Serve as plain text so the client can render or display verbatim.
+            body = mermaid.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/markdown; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path.startswith("/api/review/"):
+            wp_id = urllib.parse.unquote(path[len("/api/review/"):])
+            review = read_review(wp_id)
+            if review is None:
+                self._send_json({"error": "review_not_found", "wp": wp_id}, status=404)
+            else:
+                self._send_json(review)
             return
 
         self.send_error(404, f"No route for {path}")
