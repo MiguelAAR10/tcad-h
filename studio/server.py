@@ -595,6 +595,16 @@ def read_review(wp_id: str) -> dict | None:
         return None
 
 
+def read_atlas() -> dict | None:
+    p = PROTOCOL_DIR / "atlas" / "atlas.json"
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
 def read_wp_details(wp_id: str) -> dict | None:
     wp_dir = HANDOFFS_DIR / wp_id
     if not wp_dir.is_dir():
@@ -701,6 +711,13 @@ class StudioHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        if path == "/api/atlas":
+            atlas = read_atlas()
+            if atlas is None:
+                self._send_json({"error": "no_atlas", "hint": "run scripts/tcad_atlas.py build"}, status=404)
+            else:
+                self._send_json(atlas)
             return
         if path.startswith("/api/review/"):
             wp_id = urllib.parse.unquote(path[len("/api/review/"):])

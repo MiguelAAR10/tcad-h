@@ -29,6 +29,59 @@
     return r.json();
   }
 
+  // ----- Phase 3.3: Atlas panel ------------------------------------------
+  async function fetchAtlas() {
+    const r = await fetch("/api/atlas", { cache: "no-store" });
+    if (!r.ok) return null;
+    return r.json();
+  }
+
+  function renderAtlas(atlas) {
+    const summary = document.getElementById("atlas-summary");
+    const layersNode = document.getElementById("atlas-layers");
+    const hotsNode = document.getElementById("atlas-hotspots");
+    if (!summary || !layersNode || !hotsNode) return;
+
+    if (!atlas) {
+      summary.textContent = "No atlas built yet. Run `python3 scripts/tcad_atlas.py build`.";
+      layersNode.innerHTML = "";
+      hotsNode.innerHTML = "";
+      return;
+    }
+    summary.textContent =
+      `${atlas.wps_total} WPs · ${(atlas.layers || []).length} layers · ` +
+      `${(atlas.hotspots || []).filter(h => h.times_changed >= 2).length} hotspot(s) · ` +
+      `generated ${(atlas.generated_at || "").slice(11, 19)}`;
+
+    layersNode.innerHTML = "";
+    const layers = atlas.layers || [];
+    const max = Math.max(1, ...layers.map(l => l.files_changed_total));
+    for (const L of layers) {
+      const row = el("div", { cls: "atlas-layer-row" });
+      row.appendChild(el("span", { cls: "layer-name", text: L.layer }));
+      row.appendChild(el("span", { text: `WPs ${L.wps_touched_count}` }));
+      row.appendChild(el("span", { text: `files ${L.files_changed_total}` }));
+      const critTxt = L.critical_findings ? `crit ${L.critical_findings}` : "ok";
+      row.appendChild(el("span", { text: critTxt }));
+      const bar = el("div", { cls: "layer-bar" });
+      bar.style.width = `${Math.round((L.files_changed_total / max) * 100)}%`;
+      row.appendChild(bar);
+      layersNode.appendChild(row);
+    }
+
+    hotsNode.innerHTML = "";
+    const hots = (atlas.hotspots || []).filter(h => h.times_changed >= 2);
+    if (hots.length === 0) return;
+    hotsNode.appendChild(el("h3", { text: "Hotspots (≥2 touches)" }));
+    for (const h of hots.slice(0, 10)) {
+      const row = el("div", { cls: "atlas-hotspot-row" });
+      row.appendChild(el("span", { cls: "times", text: `${h.times_changed}x` }));
+      row.appendChild(el("code", { text: h.file }));
+      row.appendChild(el("span", { cls: "muted small", text: `last: ${h.last_wp}` }));
+      hotsNode.appendChild(row);
+    }
+  }
+
   // ----- Phase 3: Development Graph panel --------------------------------
   let lastGraphWp = null;
 
@@ -443,6 +496,8 @@
       renderEvents(events);
       // Phase 3: graph panel refresh
       try { await refreshGraphPanel(); } catch (e) { console.warn("graph panel", e); }
+      // Phase 3.3: atlas panel refresh
+      try { renderAtlas(await fetchAtlas()); } catch (e) { console.warn("atlas panel", e); }
       if (lastSelectedRoomId) {
         const room = findRoom(state, lastSelectedRoomId);
         if (room) selectRoom(room);

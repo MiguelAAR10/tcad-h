@@ -402,6 +402,44 @@ footer {
   font-size: 0.78rem;
   padding: 0.2rem 0;
 }
+/* Atlas panel */
+.atlas-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.5rem;
+}
+.atlas-layer-row {
+  display: grid;
+  grid-template-columns: 120px 80px 80px 80px 1fr;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg-elev-2);
+  border-radius: 3px;
+  margin: 0.2rem 0;
+  font-size: 0.76rem;
+  align-items: baseline;
+}
+.atlas-layer-row .layer-name { font-weight: 600; color: var(--accent); }
+.atlas-layer-row .layer-bar {
+  height: 6px;
+  background: linear-gradient(90deg, var(--c-built), var(--c-foundations));
+  border-radius: 3px;
+  align-self: center;
+}
+.atlas-hotspot-row {
+  font-size: 0.74rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--bg-elev-2);
+  border-left: 3px solid var(--c-foundations);
+  border-radius: 3px;
+  margin: 0.15rem 0;
+  display: flex;
+  gap: 0.5rem;
+}
+.atlas-hotspot-row .times { color: var(--c-foundations); font-weight: 600; }
+
 .graph-mermaid {
   background: var(--bg);
   border: 1px solid var(--line);
