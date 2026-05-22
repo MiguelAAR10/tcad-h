@@ -429,6 +429,14 @@ def cmd_close(args) -> int:
           f"({'EMPTY' if is_empty else f'{patch_path.stat().st_size} bytes'})")
     print(f"  journal:  .protocol/journal/{entry_name}.md")
     print(f"  report:   {close_report.relative_to(ROOT)}")
+    # Quick stats (Phase 2.1 trial enhancement).
+    if not is_empty and summary_info["changed_files"]:
+        top = summary_info["changed_files"][:3]
+        print(f"  quick stats:")
+        print(f"    files:  {len(summary_info["changed_files"])} changed")
+        if summary_info["tests_run"]:
+            print(f"    tests:  {len(summary_info["tests_run"])} run")
+        print(f"    top:    {', '.join(top)}")
     if validation_errors:
         print(f"  WARN:     {len(validation_errors)} validation issue(s) recorded.")
     if review_info["verdict"]:
