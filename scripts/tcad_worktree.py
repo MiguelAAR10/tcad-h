@@ -33,6 +33,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 import shutil
@@ -43,7 +44,10 @@ from pathlib import Path
 from typing import Any
 
 SCRIPT_PATH = Path(__file__).resolve()
-ROOT = SCRIPT_PATH.parent.parent
+import sys as _sys
+_sys.path.insert(0, str(SCRIPT_PATH.parent))
+from _tcad_root import resolve_tcad_root  # noqa: E402
+ROOT = resolve_tcad_root(os.environ.get("TCAD_ROOT"))
 PROTOCOL_DIR = ROOT / ".protocol"
 WORKTREES_DIR = PROTOCOL_DIR / "worktrees"
 STATUS_FILE = PROTOCOL_DIR / "status.json"
