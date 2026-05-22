@@ -410,6 +410,40 @@ def cmd_close(args) -> int:
             )
             return 5
 
+    # ---- 3c. Reviewer gate (Phase 2.4 Finding #11 fix) ------------------
+    # Run deterministic reviewer if --review flag is set or by default
+    # when not explicitly skipped. Detects duplicate routes / functions /
+    # classes that smoke tests cannot catch.
+    review_report: dict | None = None
+    review_skipped = getattr(args, "skip_review", False)
+    review_enabled = (
+        getattr(args, "review", False) or not review_skipped
+    )
+    if review_enabled and not review_skipped:
+        reviewer = SCRIPT_PATH.parent / "tcad_review.py"
+        if reviewer.is_file():
+            proc = subprocess.run(
+                [sys.executable, str(reviewer), "inspect", args.slug, "--json"],
+                cwd=str(ROOT), capture_output=True, text=True, timeout=60,
+            )
+            try:
+                review_report = json.loads(proc.stdout) if proc.stdout else None
+            except json.JSONDecodeError:
+                review_report = {"error": "review output not JSON", "raw": proc.stdout[:200]}
+            if proc.returncode == 5 and not args.force:
+                # Critical findings: block close.
+                print("Reviewer gate FAILED:", file=sys.stderr)
+                if review_report:
+                    crit = [f for f in review_report.get("findings", []) if f.get("severity") == "critical"]
+                    for f in crit:
+                        print(f"  ✗ {f.get('type')}: {f.get('message','')}", file=sys.stderr)
+                print(
+                    "\nBlocker question added to .protocol/questions/INDEX.md.\n"
+                    "Pass --skip-review to bypass, --force to override.",
+                    file=sys.stderr,
+                )
+                return 6
+
     # ---- 4. Journal entry ------------------------------------------------
     seq = next_journal_seq()
     entry_name = f"{today()}-{seq:03d}-{wp_id}"
@@ -441,6 +475,8 @@ def cmd_close(args) -> int:
         "smoke_groups": smoke_groups,
         "smoke_pass": all(r["ok"] for r in smoke_results) if smoke_results else None,
         "smoke_skipped": smoke_skipped,
+        "review_pass": (review_report.get("pass") if review_report else None),
+        "review_critical_count": (review_report.get("critical_count") if review_report else None),
         "closed_at": now(),
     }
 
@@ -564,6 +600,14 @@ def cmd_close(args) -> int:
               f"(groups: {','.join(smoke_groups)})")
     elif smoke_skipped:
         print(f"  smoke:    SKIPPED (--skip-smoke)")
+    if review_report and not review_skipped:
+        crit = review_report.get("critical_count", 0)
+        if crit == 0:
+            print(f"  review:   PASS (0 critical findings)")
+        else:
+            print(f"  review:   {crit} critical findings (BLOCKED unless --force)")
+    elif review_skipped:
+        print(f"  review:   SKIPPED (--skip-review)")
     print("\nNext step: review the journal entry, then run "
           "`tcad_worktree.py merge <slug>` (with preconditions enforced).")
     return 0
@@ -646,6 +690,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Run a specific group from smoke_tests.yaml (e.g. python_scripts).")
     s.add_argument("--skip-smoke", action="store_true",
                    help="Record close without running smoke tests.")
+    s.add_argument("--review", action="store_true",
+                   help="(default) Run deterministic reviewer gate (tcad_review inspect).")
+    s.add_argument("--skip-review", action="store_true",
+                   help="Skip the reviewer gate entirely.")
     s.set_defaults(func=cmd_close)
 
     s = sub.add_parser("validate", help="Validate WP evidence (read-only).")
