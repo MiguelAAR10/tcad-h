@@ -52,10 +52,12 @@ USAGE:
 
 CORE COMMANDS:
     init                       Bootstrap .protocol/ in current repo.
-    doctor                     Validate repo health.
+    doctor [--fix-suggestions] Validate repo health (suggestions on by default).
     profile detect             Detect project type, write project_profile.json.
     profile show               Print current profile.
     profile validate           Verify layer globs match real files.
+    quickstart                 Print the 10-step first-time flow.
+    report alpha               Digest of current repo state + next action.
 
 WORK PACKAGE COMMANDS:
     wp create   <args...>      Generate a new WP. See: tcad wp create --help
@@ -124,6 +126,36 @@ case "${1:-}" in
     doctor)
         shift
         exec python3 "$SCRIPTS/tcad_doctor.py" "$@"
+        ;;
+    quickstart)
+        cat <<'QS'
+TCAD-H quickstart — first time in a repo:
+
+  1.  tcad init
+  2.  tcad profile detect
+  3.  tcad doctor
+  4.  tcad wp create --lean --name "first-feature" --goal "..." --role backend
+  5.  tcad wp set WP-001-first-feature
+  6.  tcad conduct transition INTAKE
+      tcad conduct transition SPEC_DRAFT
+      tcad conduct transition HANDOFF_GEN
+      tcad conduct transition WORKER_BRIEF
+  7.  tcad worktree create WP-001-first-feature --role backend
+  8.  (hand off worker prompt to OpenCode / Kimi / Qwen ...)
+  9.  tcad close WP-001-first-feature-backend --smoke-test "..."
+  10. tcad graph build WP-001-first-feature
+      tcad worktree merge WP-001-first-feature-backend
+      tcad worktree destroy WP-001-first-feature-backend
+      tcad atlas build
+      tcad studio
+
+See docs/QUICKSTART.md for the full walkthrough.
+QS
+        exit 0
+        ;;
+    report)
+        shift
+        exec python3 "$SCRIPTS/tcad_report.py" "$@"
         ;;
     profile)
         shift

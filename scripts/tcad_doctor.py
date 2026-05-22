@@ -301,6 +301,10 @@ def main(argv: list[str]) -> int:
                    help="Emit machine-readable JSON report.")
     p.add_argument("--no-color", action="store_true",
                    help="Disable ANSI colors.")
+    p.add_argument("--fix-suggestions", action="store_true",
+                   help="(default on) Print suggested commands for each warning/fail.")
+    p.add_argument("--no-suggestions", action="store_true",
+                   help="Suppress suggestion section.")
     args = p.parse_args(argv)
 
     checks: list[Check] = []
@@ -351,9 +355,54 @@ def main(argv: list[str]) -> int:
           f"{counts['warn']} warn, "
           f"{counts['fail']} fail, "
           f"{counts['info']} info")
+
+    # Phase 3.5: emit suggestions unless explicitly disabled
+    if not args.no_suggestions:
+        suggestions = []
+        for c in checks:
+            if c.status not in ("warn", "fail", "info"):
+                continue
+            hint = suggestion_for(c.name, c.detail)
+            if hint:
+                suggestions.append((c.name, hint))
+        if suggestions:
+            print()
+            print("Suggestions:")
+            for name, hint in suggestions:
+                print(f"  • {name}: {hint}")
     if counts["fail"]:
         return 2
     return 0
+
+
+def suggestion_for(name: str, detail: str) -> str | None:
+    """Map a check name + detail to a suggested command. Idempotent."""
+    n = name.lower()
+    if ".protocol/ present" in n and "not found" in detail.lower():
+        return "tcad init"
+    if "status.json" in n and "absent" in detail.lower():
+        return "tcad conduct init"
+    if "project profile" in n and "absent" in detail.lower():
+        return "tcad profile detect"
+    if "atlas" in n and "absent" in detail.lower():
+        return "tcad atlas build"
+    if "scripts present" in n and "missing" in detail.lower():
+        return "Reinstall TCAD-H: cd ~/.tcad-h && ./install.sh"
+    if "scripts compile" in n and "errors" in detail.lower():
+        return "Run: python3 -m py_compile scripts/*.py  (then check stderr)"
+    if "worktree index" in n and "missing on disk" in detail.lower():
+        return "tcad worktree prune  (drops stale entries from status.json)"
+    if "worktree dir" in n and "not in status.json" in detail.lower():
+        return "tcad worktree list  (then destroy stale dirs manually if needed)"
+    if "git" in n and "not available" in detail.lower():
+        return "Install git and rerun tcad doctor"
+    if "events.jsonl" in n and "fail to parse" in detail.lower():
+        return "Inspect .protocol/events.jsonl manually; remove malformed lines"
+    if "wp " in n and "missing" in detail.lower() and ".tcad_wp.json" in detail.lower():
+        return "Add .tcad_wp.json metadata (legacy WP — see docs/CONCEPTS.md)"
+    if "wp " in n and "missing" in detail.lower():
+        return f"Fill the missing files inside the WP folder"
+    return None
 
 
 if __name__ == "__main__":
