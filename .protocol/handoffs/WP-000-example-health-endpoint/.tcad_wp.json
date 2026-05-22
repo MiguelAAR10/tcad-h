@@ -1,0 +1,21 @@
+{
+  "wp_id": "WP-000-example-health-endpoint",
+  "profile": "verbose",
+  "role": "backend",
+  "required_files": [
+    "00_context.md",
+    "01_goal.md",
+    "02_allowed_files.md",
+    "03_forbidden_files.md",
+    "04_existing_decisions.md",
+    "05_worker_prompt_backend.md",
+    "06_worker_prompt_frontend.md",
+    "07_worker_prompt_tests.md",
+    "08_worker_prompt_reading.md",
+    "09_reviewer_prompt.md",
+    "10_acceptance_criteria.md",
+    "21_open_questions.md"
+  ],
+  "created_at": "2026-05-21T19:54:00+00:00",
+  "schema_version": 1
+}

@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# tcad — TCAD-H Protocol unified CLI.
+#
+# Phase 3.4 alpha deliverable. Dispatches to existing Python scripts living
+# under <framework>/scripts/. Resolves the framework root via:
+#   1. $TCAD_HOME if set
+#   2. realpath of the symlink target's parent dir (auto-resolves when installed)
+#   3. fallback: parent dir of this script
+#
+# Target repo root is resolved by individual scripts via _tcad_root.py:
+#   --root, $TCAD_ROOT, walk-upward for .protocol/, git common dir, cwd.
+
+set -euo pipefail
+
+# ---- Resolve framework home -----------------------------------------------
+if [ -n "${TCAD_HOME:-}" ] && [ -d "$TCAD_HOME" ]; then
+    FRAMEWORK_HOME="$TCAD_HOME"
+else
+    # Resolve symlinks if installed into ~/.local/bin/tcad
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -L "$SOURCE" ]; do
+        TARGET="$(readlink "$SOURCE")"
+        if [[ "$TARGET" == /* ]]; then
+            SOURCE="$TARGET"
+        else
+            SOURCE="$(dirname "$SOURCE")/$TARGET"
+        fi
+    done
+    FRAMEWORK_HOME="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+fi
+
+SCRIPTS="$FRAMEWORK_HOME/scripts"
+VERSION_FILE="$FRAMEWORK_HOME/VERSION.md"
+
+# ---- Helpers --------------------------------------------------------------
+print_version() {
+    if [ -f "$VERSION_FILE" ]; then
+        cat "$VERSION_FILE"
+    else
+        echo "unknown"
+    fi
+}
+
+usage() {
+    cat <<EOF
+tcad — TCAD-H Protocol CLI (v$(print_version))
+
+Framework home: $FRAMEWORK_HOME
+
+USAGE:
+    tcad <command> [args...]
+
+CORE COMMANDS:
+    init                       Bootstrap .protocol/ in current repo.
+    doctor                     Validate repo health.
+    profile detect             Detect project type, write project_profile.json.
+    profile show               Print current profile.
+    profile validate           Verify layer globs match real files.
+
+WORK PACKAGE COMMANDS:
+    wp create   <args...>      Generate a new WP. See: tcad wp create --help
+    wp set      <wp-id>        Activate a WP in the Conductor FSM.
+    wp status                  Show Conductor state and active WP.
+
+WORKTREE COMMANDS:
+    worktree create  <wp>      Create isolated branch + worktree.
+    worktree list              List managed worktrees.
+    worktree merge   <slug>    Merge worktree branch into base (preconditions).
+    worktree destroy <slug>    Remove worktree + branch.
+
+EVIDENCE + REVIEW:
+    close <slug>               Close WP: capture diff + smoke + review + journal.
+    review routes <file>       Inspect routes in a single file.
+    review symbols <file>      Inspect symbols in a single file.
+    review inspect <slug>      Full diff-aware review of a WP.
+
+VISUALIZATION:
+    graph build <wp>           Generate 16_code_graph.json + 19_mermaid.md.
+    graph show  <wp>           Print mermaid of a WP.
+    atlas build                Compose cross-WP atlas.
+    atlas show                 Print atlas summary.
+    studio [--port N]          Launch localhost dashboard.
+
+UTIL:
+    scan once                  One-shot deterministic scan.
+    scan loop [--interval N]   Watcher loop (Ctrl+C to stop).
+    boundaries check [args...] Run path firewall against changed files.
+
+GLOBAL FLAGS:
+    --version, -v              Print TCAD-H version.
+    --home                     Print framework home.
+    -h, --help                 This help.
+
+EXAMPLES:
+    tcad init
+    tcad profile detect
+    tcad wp create --lean --name "fix-bug" --goal "fix login" --role backend
+    tcad worktree create WP-001-fix-bug --role backend
+    tcad close WP-001-fix-bug-backend
+    tcad graph build WP-001-fix-bug
+    tcad atlas build
+    tcad studio
+EOF
+}
+
+# ---- Subcommands ----------------------------------------------------------
+case "${1:-}" in
+    --version|-v)
+        echo "tcad $(print_version)"
+        exit 0
+        ;;
+    --home)
+        echo "$FRAMEWORK_HOME"
+        exit 0
+        ;;
+    -h|--help|"")
+        usage
+        exit 0
+        ;;
+    init)
+        shift
+        exec python3 "$SCRIPTS/tcad_init.py" "$@"
+        ;;
+    doctor)
+        shift
+        exec python3 "$SCRIPTS/tcad_doctor.py" "$@"
+        ;;
+    profile)
+        shift
+        exec python3 "$SCRIPTS/tcad_profile.py" "$@"
+        ;;
+    wp)
+        shift
+        sub="${1:-}"; shift || true
+        case "$sub" in
+            create)
+                exec python3 "$SCRIPTS/tcad_handoff.py" "$@"
+                ;;
+            set)
+                exec python3 "$SCRIPTS/tcad_conduct.py" set-wp "$@"
+                ;;
+            status)
+                exec python3 "$SCRIPTS/tcad_conduct.py" status "$@"
+                ;;
+            *)
+                echo "Unknown wp subcommand: $sub" >&2
+                echo "Try: tcad wp create | set | status" >&2
+                exit 1
+                ;;
+        esac
+        ;;
+    worktree)
+        shift
+        exec python3 "$SCRIPTS/tcad_worktree.py" "$@"
+        ;;
+    close)
+        shift
+        exec python3 "$SCRIPTS/tcad_log.py" close "$@"
+        ;;
+    review)
+        shift
+        exec python3 "$SCRIPTS/tcad_review.py" "$@"
+        ;;
+    graph)
+        shift
+        exec python3 "$SCRIPTS/tcad_graph.py" "$@"
+        ;;
+    atlas)
+        shift
+        exec python3 "$SCRIPTS/tcad_atlas.py" "$@"
+        ;;
+    studio)
+        shift
+        exec python3 "$FRAMEWORK_HOME/studio/server.py" "$@"
+        ;;
+    scan)
+        shift
+        exec python3 "$SCRIPTS/tcad_scan.py" "$@"
+        ;;
+    boundaries)
+        shift
+        sub="${1:-}"; shift || true
+        if [ "$sub" = "check" ]; then
+            exec python3 "$SCRIPTS/tcad_check_boundaries.py" "$@"
+        else
+            echo "Unknown boundaries subcommand: $sub" >&2
+            echo "Try: tcad boundaries check" >&2
+            exit 1
+        fi
+        ;;
+    journal)
+        shift
+        exec python3 "$SCRIPTS/tcad_log.py" "$@"
+        ;;
+    conduct)
+        shift
+        exec python3 "$SCRIPTS/tcad_conduct.py" "$@"
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "Run 'tcad --help' for usage." >&2
+        exit 1
+        ;;
+esac
