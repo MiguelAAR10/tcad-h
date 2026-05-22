@@ -1,0 +1,6 @@
+
+{"ts": "2026-05-22T03:40:05.224149+00:00", "actor": "worktree", "event": "worktree_created", "wp": "WP-001-demo-lean", "role": "backend", "branch": "wp/WP-001-demo-lean-backend", "path": ".protocol/worktrees/WP-001-demo-lean-backend"}
+{"ts": "2026-05-22T03:40:19.124723+00:00", "actor": "worktree", "event": "worktree_merged", "wp": "WP-001-demo-lean", "role": "backend", "branch": "wp/WP-001-demo-lean-backend", "base": "master", "strategy": "ff-only"}
+{"ts": "2026-05-22T03:40:30.914611+00:00", "actor": "worktree", "event": "worktree_destroyed", "slug": "WP-001-demo-lean-backend", "wp": "WP-001-demo-lean", "role": "backend", "branch": "wp/WP-001-demo-lean-backend"}
+{"ts": "2026-05-22T03:40:31.048013+00:00", "actor": "worktree", "event": "worktree_created", "wp": "WP-001-demo-lean", "role": "frontend", "branch": "wp/WP-001-demo-lean-frontend", "path": ".protocol/worktrees/WP-001-demo-lean-frontend"}
+{"ts": "2026-05-22T03:40:31.190399+00:00", "actor": "worktree", "event": "worktree_destroyed", "slug": "WP-001-demo-lean-frontend", "wp": "WP-001-demo-lean", "role": "frontend", "branch": "wp/WP-001-demo-lean-frontend"}

@@ -1,0 +1,125 @@
+# Terminals — registry of terminal identities and scopes.
+#
+# Phase 1.9 deliverable. Read by:
+#   - scripts/tcad_worktree.py    (resolve role on create)
+#   - scripts/tcad_check_boundaries.py (future: validate --terminal flag)
+#   - scripts/tcad_scan.py        (future: scope events by terminal)
+#   - studio/server.py            (Studio panel: "who's working on what")
+#
+# Up to 5 terminals stable. More than 5 = noise. Fewer fine.
+# These are LOGICAL identities, not OS sessions. A human may open T2
+# multiple times; what matters is the role + scope.
+
+schema_version: 1.0
+
+terminals:
+
+  - id: T1
+    name: architect
+    tool: claude-code
+    model_family: claude
+    role: conductor
+    cost_policy: protect_tokens
+    can_edit:
+      - "specs/**"
+      - ".protocol/handoffs/**/0[0-9]_*.md"
+      - ".protocol/handoffs/**/2[0-9]_*.md"
+    cannot_edit:
+      - "backend/**"
+      - "frontend/**"
+      - ".protocol/handoffs/**/1[0-9]_*.md"   # worker/reviewer artifacts
+    description: |
+      High-cost reasoning seat. Plans, drafts WPs, reviews difficult diffs.
+      Never picks repetitive code. Never approves its own WP as reviewer.
+
+  - id: T2
+    name: backend
+    tool: opencode
+    model_family: kimi
+    fallback_models: [gpt, claude-haiku]
+    role: backend-worker
+    can_edit:
+      - "backend/**"
+      - "tests/backend/**"
+      - ".protocol/handoffs/**/11_worker_summary.md"
+      - ".protocol/handoffs/**/12_delta.md"
+      - ".protocol/handoffs/**/13_blockers.md"
+    cannot_edit:
+      - "frontend/**"
+      - "infra/**"
+      - "**/schemas/**"           # contract changes require T1 approval
+    description: |
+      Executes backend Work Packages inside a git worktree.
+      Reads only the WP it was assigned. No conversational context.
+
+  - id: T3
+    name: frontend
+    tool: opencode
+    model_family: qwen
+    fallback_models: [gpt, claude-haiku]
+    role: frontend-worker
+    can_edit:
+      - "frontend/**"
+      - "tests/frontend/**"
+      - ".protocol/handoffs/**/11_worker_summary.md"
+      - ".protocol/handoffs/**/12_delta.md"
+      - ".protocol/handoffs/**/13_blockers.md"
+    cannot_edit:
+      - "backend/**"
+      - "infra/**"
+    description: |
+      Executes frontend Work Packages inside a git worktree.
+      Reuses existing components, never invents design systems.
+
+  - id: T4
+    name: docs_tests
+    tool: opencode
+    model_family: minimax
+    fallback_models: [deepseek, claude-haiku]
+    role: docs-tests-worker
+    can_edit:
+      - "docs/**"
+      - "tests/**"
+      - "README.md"
+      - ".protocol/handoffs/**/11_worker_summary.md"
+    cannot_edit:
+      - "backend/app/**"          # tests can read; production code stays put
+      - "frontend/src/**"
+    description: |
+      Low-cost worker for repetitive tasks: tests, docs, mass reading
+      summaries. Cannot modify production code.
+
+  - id: T5
+    name: watcher
+    tool: shell
+    model_family: none
+    role: system-observer
+    can_edit:
+      - ".protocol/events.jsonl"
+      - ".protocol/status.json"   # scan block only; see tcad_scan.py
+    cannot_edit:
+      - "**"                       # explicit nothing else
+    description: |
+      Runs tcad_scan.py loop. Emits events. Does not generate code.
+      Hosts the studio server.
+
+# Pairing rules: which terminal may review which.
+# Enforced by tcad_conduct.py guard when transitioning to REVIEWING.
+review_pairing:
+  - worker_role: backend-worker
+    reviewer_roles: [conductor, frontend-worker, docs-tests-worker]
+  - worker_role: frontend-worker
+    reviewer_roles: [conductor, backend-worker, docs-tests-worker]
+  - worker_role: docs-tests-worker
+    reviewer_roles: [conductor, backend-worker, frontend-worker]
+  # The conductor cannot be its own reviewer:
+  - worker_role: conductor
+    reviewer_roles: [backend-worker, frontend-worker, docs-tests-worker]
+
+# Cost policy hints (informational, not enforced today).
+cost_policy:
+  protect_tokens:
+    description: "Avoid invoking this terminal for boilerplate, tests, mass reads."
+    avoid_tasks: [boilerplate, test_scaffolding, mechanical_renames, long_file_reads]
+  burn_freely:
+    description: "Cheap or local; use for high-volume work."

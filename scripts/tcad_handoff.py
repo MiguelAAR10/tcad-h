@@ -47,8 +47,8 @@ STATUS_EXAMPLE = ROOT / ".protocol" / "status.json.example"
 
 VALID_ROLES = {"backend", "frontend", "tests", "reading"}
 
-# The 12 files that every WP must contain.
-REQUIRED_FILES = [
+# Verbose mode: full 12-file template (rich didactic context).
+VERBOSE_FILES = [
     "00_context.md",
     "01_goal.md",
     "02_allowed_files.md",
@@ -62,6 +62,20 @@ REQUIRED_FILES = [
     "10_acceptance_criteria.md",
     "21_open_questions.md",
 ]
+
+# Lean mode (Phase 1.9 KISS): 4 base + 1 role-specific worker prompt = 5 files.
+LEAN_FILES_BASE = [
+    "01_goal.md",
+    "02_allowed_files.md",
+    "03_forbidden_files.md",
+    "10_acceptance_criteria.md",
+]
+LEAN_ROLE_PROMPT = {
+    "backend":  "05_worker_prompt_backend.md",
+    "frontend": "06_worker_prompt_frontend.md",
+    "tests":    "07_worker_prompt_tests.md",
+    "reading":  "08_worker_prompt_reading.md",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +111,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Show what would be created without writing files.",
+    )
+    p.add_argument(
+        "--lean",
+        action="store_true",
+        help=(
+            "Lean mode (Phase 1.9 KISS): generate 5 files instead of 12. "
+            "01_goal + 02_allowed + 03_forbidden + 10_acceptance + the role prompt."
+        ),
     )
     return p.parse_args(argv)
 
@@ -164,22 +186,28 @@ def write_file(path: Path, content: str, dry_run: bool) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def validate_template() -> list[str]:
+def files_for_mode(lean: bool, role: str) -> list[str]:
+    if not lean:
+        return list(VERBOSE_FILES)
+    return list(LEAN_FILES_BASE) + [LEAN_ROLE_PROMPT[role]]
+
+
+def validate_template(files: list[str]) -> list[str]:
     """Return a list of error messages, empty if the template is valid."""
     errors: list[str] = []
     if not TEMPLATE_DIR.exists():
         errors.append(f"Template directory missing: {TEMPLATE_DIR}")
         return errors
-    for required in REQUIRED_FILES:
+    for required in files:
         if not (TEMPLATE_DIR / required).is_file():
             errors.append(f"Template file missing: {TEMPLATE_DIR / required}")
     return errors
 
 
-def validate_generated(wp_dir: Path) -> list[str]:
+def validate_generated(wp_dir: Path, files: list[str]) -> list[str]:
     """Confirm all required files exist after generation."""
     errors: list[str] = []
-    for required in REQUIRED_FILES:
+    for required in files:
         target = wp_dir / required
         if not target.is_file():
             errors.append(f"Missing generated file: {target}")
@@ -232,7 +260,8 @@ def main(argv: list[str]) -> int:
         print("Error: --goal cannot be empty.", file=sys.stderr)
         return 1
 
-    template_errors = validate_template()
+    files_to_make = files_for_mode(args.lean, args.role)
+    template_errors = validate_template(files_to_make)
     if template_errors:
         for err in template_errors:
             print(f"Template error: {err}", file=sys.stderr)
@@ -269,13 +298,14 @@ def main(argv: list[str]) -> int:
     print(f"  goal:        {args.goal}")
     print(f"  role:        {args.role}")
     print(f"  date:        {today}")
+    print(f"  mode:        {'lean (5 files)' if args.lean else 'verbose (12 files)'}")
     if args.dry_run:
-        print("  mode:        DRY RUN (no files will be written)")
+        print("  dry-run:     ON (no files will be written)")
 
     if not args.dry_run:
         wp_dir.mkdir(parents=True, exist_ok=False)
 
-    for filename in REQUIRED_FILES:
+    for filename in files_to_make:
         src = TEMPLATE_DIR / filename
         dst = wp_dir / filename
         try:
@@ -290,9 +320,9 @@ def main(argv: list[str]) -> int:
         print("\nDry run complete. No files were created.")
         return 0
 
-    print(f"\nGenerated {len(REQUIRED_FILES)} files under {wp_dir.relative_to(ROOT)}/")
+    print(f"\nGenerated {len(files_to_make)} files under {wp_dir.relative_to(ROOT)}/")
 
-    gen_errors = validate_generated(wp_dir)
+    gen_errors = validate_generated(wp_dir, files_to_make)
     if gen_errors:
         for err in gen_errors:
             print(f"Validation error: {err}", file=sys.stderr)
