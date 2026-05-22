@@ -517,6 +517,25 @@ def build_state_payload() -> dict:
     }
 
 
+
+
+def read_events_tail(n: int = 10) -> list:
+    """Read the last N lines of events.jsonl as parsed JSON objects."""
+    if not (PROTOCOL_DIR / "events.jsonl").exists():
+        return []
+    lines = (PROTOCOL_DIR / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    out = []
+    for line in lines[-n:]:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
 def read_wp_details(wp_id: str) -> dict | None:
     wp_dir = HANDOFFS_DIR / wp_id
     if not wp_dir.is_dir():
@@ -580,6 +599,13 @@ class StudioHandler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/blueprint":
             self._send_json(load_yaml(BLUEPRINT_FILE) or load_yaml(BLUEPRINT_EXAMPLE) or {})
+            return
+        if path == "/api/events":
+            try:
+                limit = int(urllib.parse.parse_qs(parsed.query).get("limit", ["10"])[0])
+            except ValueError:
+                limit = 10
+            self._send_json(read_events_tail(limit))
             return
         if path.startswith("/api/wp/"):
             wp_id = urllib.parse.unquote(path[len("/api/wp/"):])

@@ -298,3 +298,28 @@ footer {
       "timeline";
   }
 }
+
+
+/* Events panel (WP-002) */
+.events-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.5rem;
+}
+.events-list { display: flex; flex-direction: column; gap: 0.2rem; max-height: 240px; overflow-y: auto; }
+.event-row {
+  display: grid;
+  grid-template-columns: 70px 90px 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-elev-2);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 3px;
+  font-size: 0.74rem;
+}
+.event-ts    { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.event-actor { color: var(--accent); }
+.event-name  { color: var(--text); }
+.event-wp    { color: var(--text-dim); text-align: right; }

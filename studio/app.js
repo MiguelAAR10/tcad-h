@@ -29,6 +29,31 @@
     return r.json();
   }
 
+  async function fetchEvents(limit = 10) {
+    const r = await fetch("/api/events?limit=" + limit, { cache: "no-store" });
+    if (!r.ok) return [];
+    return r.json();
+  }
+
+  function renderEvents(events) {
+    const panel = document.getElementById("events");
+    if (!panel) return;
+    panel.innerHTML = "";
+    if (!events || events.length === 0) {
+      panel.appendChild(el("p", { cls: "muted", text: "No events yet." }));
+      return;
+    }
+    for (const ev of events.slice().reverse()) {
+      const card = el("div", { cls: "event-row" });
+      const ts = (ev.ts || "").slice(11, 19);
+      card.appendChild(el("span", { cls: "event-ts", text: ts }));
+      card.appendChild(el("span", { cls: "event-actor", text: ev.actor || "?" }));
+      card.appendChild(el("span", { cls: "event-name", text: ev.event || "?" }));
+      if (ev.wp) card.appendChild(el("span", { cls: "event-wp", text: ev.wp }));
+      panel.appendChild(card);
+    }
+  }
+
   async function fetchWpDetails(wpId) {
     const r = await fetch("/api/wp/" + encodeURIComponent(wpId), { cache: "no-store" });
     if (!r.ok) throw new Error("wp fetch failed: " + r.status);
@@ -251,6 +276,8 @@
       renderBuilding(state);
       renderTimeline(state);
       renderConstructionPlan(state);
+      const events = await fetchEvents(10);
+      renderEvents(events);
       if (lastSelectedRoomId) {
         const room = findRoom(state, lastSelectedRoomId);
         if (room) selectRoom(room);
