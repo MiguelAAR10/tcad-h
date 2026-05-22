@@ -199,11 +199,50 @@ def update_status_health(health: dict, risk: dict, mapping: dict, changed_files:
 # ---------------------------------------------------------------------------
 # Single scan
 # ---------------------------------------------------------------------------
+def git_changed_files_in(worktree: Path) -> list[str]:
+    """Audit fix #6: scan a specific worktree path."""
+    try:
+        out = subprocess.check_output(
+            ["git", "diff", "--name-only"],
+            cwd=str(worktree), text=True, stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+    return [f for f in out.strip().split("\n") if f]
+
+
+def collect_changed_files() -> tuple[list[str], dict[str, list[str]]]:
+    """Audit fix #6: collect changed files from root + registered worktrees."""
+    by_source: dict[str, list[str]] = {}
+    combined: list[str] = []
+    root_files = git_changed_files()
+    if root_files:
+        by_source["root"] = root_files
+        combined.extend(root_files)
+    if STATUS_FILE.exists():
+        try:
+            status = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            status = {}
+        wt_index = status.get("worktrees", {}) or {}
+        for slug, info in wt_index.items():
+            wt_path = Path(info.get("absolute_path") or info.get("path") or "")
+            if not wt_path.exists():
+                continue
+            wt_files = git_changed_files_in(wt_path)
+            if wt_files:
+                tagged = [f"[{slug}] {f}" for f in wt_files]
+                by_source[slug] = tagged
+                combined.extend(tagged)
+    return combined, by_source
+
+
 def perform_scan(verbose: bool = False) -> dict[str, Any]:
-    files = git_changed_files()
-    eval_report = evaluate(files)
-    risk = compute_risk(files)
-    mapping = map_files_to_capabilities(files)
+    files, by_source = collect_changed_files()
+    raw_files = [f.split("] ", 1)[1] if f.startswith("[") and "] " in f else f for f in files]
+    eval_report = evaluate(raw_files)
+    risk = compute_risk(raw_files)
+    mapping = map_files_to_capabilities(raw_files)
     health = compute_health(eval_report, risk)
 
     # Emit per-file events (boundary_warning / boundary_violation).
@@ -230,6 +269,7 @@ def perform_scan(verbose: bool = False) -> dict[str, Any]:
     summary = {
         "ts": now(), "actor": "watcher", "event": "scan_completed",
         "changed_files": len(files),
+        "sources": {k: len(v) for k, v in by_source.items()},
         "hard": len(eval_report["violations"]["hard"]),
         "soft": len(eval_report["violations"]["soft"]),
         "approval": len(eval_report["violations"]["approval"]),

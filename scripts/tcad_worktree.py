@@ -289,32 +289,55 @@ def cmd_inspect(args) -> int:
     return 0
 
 
+def check_merge_preconditions(wp_dir: Path | None, wt_path: Path, args) -> list[str]:
+    """Audit fix #3 (mentor): merge preconditions — summary + blockers + boundary."""
+    errors: list[str] = []
+    if getattr(args, "skip_checks", False):
+        return errors
+    status_out = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=wt_path, text=True,
+        capture_output=True, check=False,
+    )
+    if status_out.stdout.strip():
+        errors.append(f"worktree has uncommitted changes (cd {wt_path}; git status)")
+    if wp_dir is None:
+        return errors
+    summary = wp_dir / "11_worker_summary.md"
+    if not summary.is_file():
+        errors.append(f"missing {summary.name} in {wp_dir.name}")
+    else:
+        text = summary.read_text(encoding="utf-8", errors="ignore")
+        if "NEXT STEP: ready for review" not in text:
+            errors.append(f"{summary.name} lacks 'NEXT STEP: ready for review'")
+    blockers = wp_dir / "13_blockers.md"
+    if blockers.is_file() and blockers.stat().st_size > 0:
+        btext = blockers.read_text(encoding="utf-8", errors="ignore").strip()
+        if len(btext) > 20 and "resolved" not in btext.lower():
+            errors.append(f"{blockers.name} present and unresolved")
+    return errors
+
+
 def cmd_merge(args) -> int:
     state = load_status()
     wt = (state.get("worktrees") or {}).get(args.slug)
     if not wt:
         print(f"Worktree not found: {args.slug}", file=sys.stderr)
         return 5
-
     wt_path = Path(wt.get("absolute_path") or wt.get("path"))
     branch = wt.get("branch")
     base = wt.get("base") or default_base_branch()
-
     if not wt_path.exists():
         print(f"Worktree path missing on disk: {wt_path}", file=sys.stderr)
         return 5
-
-    # Safety: refuse if worktree has uncommitted changes.
-    status_out = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=wt_path, text=True,
-        capture_output=True, check=False,
+    wp_dir = HANDOFFS_DIR / wt["wp"] if wt.get("wp") else None
+    errors = check_merge_preconditions(
+        wp_dir if wp_dir and wp_dir.is_dir() else None, wt_path, args
     )
-    if status_out.stdout.strip():
-        print(
-            f"Refusing to merge: worktree has uncommitted changes.\n"
-            f"  cd {wt_path}\n  git status",
-            file=sys.stderr,
-        )
+    if errors:
+        print("Refusing to merge — preconditions failed:", file=sys.stderr)
+        for e in errors:
+            print(f"  ✗ {e}", file=sys.stderr)
+        print("\nOverride with --skip-checks.", file=sys.stderr)
         return 6
 
     # Switch base branch to top and merge.
@@ -368,6 +391,26 @@ def cmd_destroy(args) -> int:
                 file=sys.stderr,
             )
             return 6
+
+    # Audit fix #4: archive patch before destroy.
+    if getattr(args, "archive_patch", False) and wt.get("wp"):
+        wp_dir = HANDOFFS_DIR / wt["wp"]
+        if wp_dir.is_dir():
+            patch_dest = wp_dir / "15_diff.patch"
+            base = wt.get("base") or "master"
+            try:
+                patch_out = subprocess.run(
+                    ["git", "diff", f"{base}...{branch}"],
+                    cwd=ROOT, text=True, capture_output=True, check=False,
+                )
+                patch_dest.write_text(patch_out.stdout, encoding="utf-8")
+                print(f"  archived patch: {patch_dest.relative_to(ROOT)} ({patch_dest.stat().st_size} bytes)")
+                append_event({
+                    "ts": now(), "actor": "worktree", "event": "patch_archived",
+                    "wp": wt["wp"], "branch": branch, "size": patch_dest.stat().st_size,
+                })
+            except Exception as exc:
+                print(f"  warn: could not archive patch: {exc}", file=sys.stderr)
 
     # Remove worktree.
     if wt_path.exists():
@@ -456,6 +499,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("slug")
     s.add_argument("--no-ff", action="store_true",
                    help="Use --no-ff (create merge commit) instead of fast-forward.")
+    s.add_argument("--skip-checks", action="store_true",
+                   help="Skip merge preconditions (summary, blockers).")
     s.set_defaults(func=cmd_merge)
 
     s = sub.add_parser("destroy", help="Remove a worktree and its branch.")
@@ -464,6 +509,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Override safety checks; discard uncommitted changes.")
     s.add_argument("--keep-branch", action="store_true",
                    help="Remove worktree only; keep branch.")
+    s.add_argument("--archive-patch", action="store_true",
+                   help="Audit fix #4: dump branch diff to 15_diff.patch before destroying.")
     s.set_defaults(func=cmd_destroy)
 
     s = sub.add_parser("prune", help="Clean orphaned worktree entries.")
