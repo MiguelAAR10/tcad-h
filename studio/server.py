@@ -47,6 +47,7 @@ from typing import Any
 SCRIPT_PATH = Path(__file__).resolve()
 STUDIO_DIR = SCRIPT_PATH.parent
 ROOT = STUDIO_DIR.parent
+PROTOCOL_DIR = ROOT / ".protocol"
 BLUEPRINT_FILE = ROOT / ".protocol" / "blueprint" / "blueprint.yaml"
 BLUEPRINT_EXAMPLE = ROOT / ".protocol" / "blueprint" / "blueprint.yaml.example"
 HANDOFFS_DIR = ROOT / ".protocol" / "handoffs"
