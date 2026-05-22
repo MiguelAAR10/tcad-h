@@ -57,6 +57,7 @@ ROOT = resolve_tcad_root(os.environ.get("TCAD_ROOT"))
 PROTOCOL_DIR = ROOT / ".protocol"
 HANDOFFS_DIR = PROTOCOL_DIR / "handoffs"
 EVENTS_FILE = PROTOCOL_DIR / "events.jsonl"
+PROFILE_FILE = PROTOCOL_DIR / "project_profile.json"
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +165,48 @@ def events_for_wp(wp_id: str, limit: int = 50) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Graph composition
 # ---------------------------------------------------------------------------
+def load_profile() -> dict | None:
+    """Phase 3.1: load project_profile.json if present."""
+    if not PROFILE_FILE.is_file():
+        return None
+    try:
+        return json.loads(PROFILE_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _walk_match(path_parts: list[str], pat_parts: list[str]) -> bool:
+    """Pattern matching that handles `**` correctly across path segments."""
+    import fnmatch
+    if not pat_parts:
+        return not path_parts
+    head, rest = pat_parts[0], pat_parts[1:]
+    if head == "**":
+        if not rest:
+            return True
+        for i in range(len(path_parts) + 1):
+            if _walk_match(path_parts[i:], rest):
+                return True
+        return False
+    if not path_parts:
+        return False
+    if fnmatch.fnmatchcase(path_parts[0], head):
+        return _walk_match(path_parts[1:], rest)
+    return False
+
+
+def classify_by_layer(path: str, profile: dict | None) -> str | None:
+    """Phase 3.1: pick the first matching layer from profile.layers globs."""
+    if not profile:
+        return None
+    layers = profile.get("layers", {}) or {}
+    for layer_name, globs in layers.items():
+        for g in globs:
+            if _walk_match(path.split("/"), g.split("/")):
+                return layer_name
+    return None
+
+
 def classify_file(path: str) -> str:
     """Return a category for color/grouping. Conservative — only by suffix/dir."""
     p = path.lower()
@@ -216,17 +259,24 @@ def compose_graph(
         else:
             files_by_change = parse_patch_files(text)
 
+    # Phase 3.1: load profile (if present) for layer tagging
+    profile = load_profile()
+
     # Build nodes (one per file)
     nodes = []
     for path, info in sorted(files_by_change.items()):
-        nodes.append({
+        node = {
             "id": path,
             "type": "file",
             "category": classify_file(path),
             "change_type": info["change_type"],
             "additions": info["additions"],
             "deletions": info["deletions"],
-        })
+        }
+        layer = classify_by_layer(path, profile)
+        if layer:
+            node["layer"] = layer
+        nodes.append(node)
 
     # Build edges: test_target — heuristic only by name pairing.
     # If we see "tests/test_X.py" and a sibling "X.py" or "app/X.py", link them.
@@ -300,12 +350,29 @@ def compose_graph(
                 "reason": f"largest diff ({n['additions']} adds, {n['deletions']} dels)",
             })
 
+    # Phase 3.1: project context for graph consumers
+    project_ctx = None
+    if profile:
+        project_ctx = {
+            "type": (profile.get("project") or {}).get("type"),
+            "name": (profile.get("project") or {}).get("name"),
+            "stack": profile.get("stack"),
+            "layers_known": list((profile.get("layers") or {}).keys()),
+        }
+    # Tally layer touches
+    layer_touches: dict[str, int] = {}
+    for n in nodes:
+        if n.get("layer"):
+            layer_touches[n["layer"]] = layer_touches.get(n["layer"], 0) + 1
+
     graph = {
         "wp": wp_id,
         "wp_profile": wp_meta.get("profile"),
         "role": wp_meta.get("role"),
         "branch": (close or {}).get("branch"),
         "base": (close or {}).get("base"),
+        "project": project_ctx,
+        "layer_touches": layer_touches,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "files_total": len(nodes),
@@ -367,10 +434,15 @@ def render_mermaid(graph: dict) -> str:
     # Title node
     title = f"WP[{graph['wp']}]"
     lines.append(f"  {title}")
-    # Group nodes by category for subgraphs
+    # Phase 3.1: group nodes by LAYER when profile applied; else fall back to category.
+    use_layers = any(n.get("layer") for n in graph["nodes"])
     groups: dict[str, list[dict]] = {}
     for n in graph["nodes"]:
-        groups.setdefault(CATEGORY_GROUPS.get(n["category"], "Other"), []).append(n)
+        if use_layers:
+            gname = (n.get("layer") or "other").title()
+        else:
+            gname = CATEGORY_GROUPS.get(n["category"], "Other")
+        groups.setdefault(gname, []).append(n)
     for gname, items in groups.items():
         # subgraph keyword expects an ID; use sanitized
         gid = "G_" + re.sub(r"[^a-zA-Z0-9_]", "_", gname)
@@ -417,6 +489,30 @@ def render_mermaid(graph: dict) -> str:
     val_errs = g.get("validation_errors") or []
     if val_errs:
         lines.append(f"- validation errors: {len(val_errs)}")
+
+    # Phase 3.1: project + layer summary
+    proj = graph.get("project") or {}
+    if proj.get("type"):
+        lines.append("")
+        lines.append(f"## Project context")
+        lines.append("")
+        lines.append(f"- type: `{proj.get('type')}`")
+        if proj.get("name"):
+            lines.append(f"- name: `{proj['name']}`")
+        stack = proj.get("stack") or {}
+        backend = stack.get("backend")
+        frontend = stack.get("frontend")
+        if backend and backend != "none":
+            lines.append(f"- backend: `{backend}`")
+        if frontend and frontend != "none":
+            lines.append(f"- frontend: `{frontend}`")
+    layer_touches = graph.get("layer_touches") or {}
+    if layer_touches:
+        lines.append("")
+        lines.append(f"## Layer touches")
+        lines.append("")
+        for layer, n in layer_touches.items():
+            lines.append(f"- **{layer}**: {n} file(s)")
 
     # Reviewer focus
     if graph["reviewer_focus"]:
@@ -489,6 +585,13 @@ def cmd_static(args) -> int:
             print(f"  review:       PASS")
         else:
             print(f"  review:       FAIL ({gates.get('review_critical_count', 0)} critical)")
+    proj = graph.get("project") or {}
+    if proj.get("type"):
+        layers = graph.get("layer_touches") or {}
+        layer_str = ", ".join(f"{k}:{v}" for k, v in layers.items()) if layers else "none"
+        print(f"  project:      {proj.get('type')} (backend={(proj.get('stack') or {}).get('backend')}, "
+              f"frontend={(proj.get('stack') or {}).get('frontend')})")
+        print(f"  layers:       {layer_str}")
     print(f"  outputs:")
     print(f"    {graph_path.relative_to(ROOT)}")
     print(f"    {mermaid_path.relative_to(ROOT)}")

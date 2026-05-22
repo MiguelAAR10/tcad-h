@@ -1,0 +1,62 @@
+{
+  "schema_version": 1.0,
+  "generated_at": "2026-05-22T20:26:59.037189+00:00",
+  "generated_by": "tcad_profile.py detect",
+  "project": {
+    "name": "framework",
+    "type": "other"
+  },
+  "stack": {
+    "backend": "none",
+    "frontend": "none",
+    "package_manager": "none",
+    "test_runner": "none",
+    "build_tool": "none"
+  },
+  "layers": {
+    "tests": [
+      "tests/**",
+      "**/test_*.py",
+      "**/*_test.py",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx"
+    ],
+    "infra": [
+      ".github/workflows/**",
+      "Dockerfile",
+      "docker-compose*.yml",
+      "fly.toml",
+      "vercel.json",
+      "infra/**"
+    ],
+    "docs": [
+      "docs/**",
+      "*.md",
+      "**/*.md"
+    ],
+    "config": [
+      "*.json",
+      "*.yaml",
+      "*.yml",
+      "*.toml",
+      "*.cfg",
+      "*.ini"
+    ],
+    "scripts": [
+      "scripts/**",
+      "bin/**"
+    ],
+    "studio": [
+      "studio/**"
+    ]
+  },
+  "detectors": {
+    "routes": [],
+    "symbols": [],
+    "components": []
+  },
+  "architecture_blocks": [],
+  "visual_model": "file_layer_grouped"
+}

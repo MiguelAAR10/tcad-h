@@ -1,0 +1,120 @@
+# Project Profile — TCAD-H Phase 3.1.
+#
+# Defines the TYPE of project so the harness can:
+#   - tag changed files by ARCHITECTURE LAYER (not just by file extension)
+#   - select the right smoke tests
+#   - render the graph by layer subgraphs (not just by file category)
+#   - resolve duplicate-detection scope correctly
+#
+# Schema version: 1.0
+# Read by:
+#   scripts/tcad_profile.py     (writes & validates project_profile.json)
+#   scripts/tcad_graph.py        (assigns layer to each node when present)
+#   scripts/tcad_log.py          (future: pick smoke group by layer)
+#
+# Deterministic. No LLM. No invention.
+
+schema_version: 1.0
+
+project:
+  name: "<project name>"
+  type: "<fullstack_web | backend_api | frontend_spa | cli_tool | python_library |
+         monorepo | agent_rag | data_pipeline | mobile_app | other>"
+  description: "<one-line>"
+
+# What the project is built with. Used for smoke-test routing + detector choice.
+stack:
+  backend: "<fastapi | flask | django | express | nest | rails | go | none>"
+  frontend: "<react | next | vue | angular | svelte | none>"
+  package_manager: "<pnpm | npm | yarn | bun | pip | poetry | uv | cargo>"
+  test_runner: "<pytest | vitest | jest | mocha | go-test>"
+  build_tool: "<vite | webpack | next | turbopack | none>"
+
+# Each layer = a list of globs that belong to it. Order does not matter; the
+# graph uses the FIRST matching layer per file (so make layers disjoint).
+layers:
+  backend:
+    - "backend/**"
+    - "server/**"
+    - "api/**"
+    - "app/**/*.py"
+  frontend:
+    - "frontend/**"
+    - "src/**/*.tsx"
+    - "src/**/*.jsx"
+    - "src/components/**"
+    - "src/pages/**"
+    - "src/app/**"
+  tests:
+    - "tests/**"
+    - "**/*.test.ts"
+    - "**/*.test.tsx"
+    - "**/*.spec.ts"
+    - "**/test_*.py"
+    - "**/*_test.py"
+  infra:
+    - "infra/**"
+    - ".github/workflows/**"
+    - "Dockerfile"
+    - "docker-compose*.yml"
+    - "fly.toml"
+    - "vercel.json"
+  docs:
+    - "docs/**"
+    - "*.md"
+    - "**/*.md"
+  config:
+    - "*.json"
+    - "*.yaml"
+    - "*.yml"
+    - "*.toml"
+    - "*.cfg"
+  scripts:
+    - "scripts/**"
+    - "bin/**"
+  agent:                # only for agent_rag projects
+    - "agents/**"
+    - "prompts/**"
+    - "tools/**"
+    - "retrievers/**"
+  studio:               # TCAD-H itself uses this layer
+    - "studio/**"
+
+# Which deterministic detectors to enable per language/framework. tcad_review
+# reads this to know which route patterns / symbol detectors to run.
+detectors:
+  routes:
+    - fastapi
+    # - express
+    # - flask
+    # - next-api
+  symbols:
+    - python
+    # - typescript
+  components: []
+    # - react
+    # - angular
+
+# Optional architecture map. If filled, the graph annotates nodes with the
+# logical block they belong to. Without this, the graph still works — just
+# coarser (by layer only).
+architecture_blocks:
+  - id: api.health
+    label: "Health Endpoint"
+    layer: backend
+    route_patterns:
+      - "GET /health"
+    files:
+      - "main.py"
+      - "app/main.py"
+  - id: api.users
+    label: "Users API"
+    layer: backend
+    route_patterns:
+      - "* /api/users*"
+    files:
+      - "app/routers/users.py"
+      - "backend/app/routers/users.py"
+
+# Visual hint for the Studio renderer.
+visual_model: "<file_layer_grouped | architecture_blocks | sequence_flow>"
