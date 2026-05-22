@@ -1,0 +1,145 @@
+# Phase ownership map.
+# Who owns which phase, what they produce, what they consume.
+# Read by tcad_conduct.py (Phase 1.5) for delegation hints.
+
+version: 2.4
+name: "TCAD Multi-CLI Harness"
+
+phases:
+
+  - phase: recall
+    owner: claude-code-conductor
+    inputs:
+      - AGENTS.md
+      - .protocol/method.md
+      - .protocol/boundaries.yaml
+      - .protocol/status.json
+      - .protocol/journal/INDEX.md (last 3 entries)
+      - .protocol/questions/INDEX.md
+    output: (internal state, no artifact)
+
+  - phase: translate
+    owner: claude-code-conductor
+    inputs:
+      - human request
+    output: specs/<id>/spec.md
+    human_gate: required
+
+  - phase: context
+    owner: claude-code-conductor
+    inputs:
+      - specs/<id>/spec.md
+      - repo tree
+      - .protocol/boundaries.yaml
+      - .protocol/capabilities.yaml (if present)
+    output:
+      - .protocol/handoffs/<wp>/00_context.md
+      - .protocol/handoffs/<wp>/04_existing_decisions.md
+      - reuse_score
+
+  - phase: approach
+    owner: claude-code-conductor
+    inputs:
+      - context phase outputs
+    output:
+      - specs/<id>/plan.md
+      - .protocol/handoffs/<wp>/05_worker_prompt_*.md
+      - .protocol/handoffs/<wp>/09_reviewer_prompt.md
+      - .protocol/handoffs/<wp>/10_acceptance_criteria.md
+    auto_go_rules:
+      - reuse_score >= 0.6
+      - estimated_diff_loc < 200
+      - no_denied_paths_touched
+      - contracts_changed == false
+      - risk_level == low
+    fallback: human_gate
+
+  - phase: develop_backend
+    owner: opencode-worker
+    preferred_models: [kimi, gpt]
+    status: UNVERIFIED
+    input: .protocol/handoffs/<wp>/05_worker_prompt_backend.md
+    output:
+      - code changes on branch wp/<id>
+      - .protocol/handoffs/<wp>/11_worker_summary.md
+      - .protocol/handoffs/<wp>/12_delta.md (optional)
+      - .protocol/handoffs/<wp>/13_blockers.md (optional)
+
+  - phase: develop_frontend
+    owner: opencode-worker
+    preferred_models: [qwen]
+    status: UNVERIFIED
+    input: .protocol/handoffs/<wp>/06_worker_prompt_frontend.md
+    output:
+      - code changes on branch wp/<id>
+      - .protocol/handoffs/<wp>/11_worker_summary.md
+
+  - phase: develop_tests
+    owner: opencode-worker
+    preferred_models: [minimax, qwen]
+    status: UNVERIFIED
+    input: .protocol/handoffs/<wp>/07_worker_prompt_tests.md
+    output:
+      - test files on branch wp/<id>
+      - .protocol/handoffs/<wp>/11_worker_summary.md
+
+  - phase: read_massive
+    owner: opencode-worker
+    preferred_models: [deepseek, long-context-gemini]
+    status: UNVERIFIED
+    input: .protocol/handoffs/<wp>/08_worker_prompt_reading.md
+    output:
+      - .protocol/handoffs/<wp>/11_worker_summary.md (map only, no code)
+
+  - phase: atlas_static
+    owner: scripts/tcad_graph_static.py (Phase 2.5a)
+    inputs:
+      - .protocol/handoffs/<wp>/15_diff.patch
+      - tree-sitter or AST parse of changed files
+    output:
+      - .protocol/handoffs/<wp>/16_code_graph.json
+      - .protocol/handoffs/<wp>/19_mermaid.md (basic)
+
+  - phase: atlas_semantic
+    owner: scripts/tcad_graph_enrich.py (Phase 2.5b)
+    inputs:
+      - 16_code_graph.json
+      - 01_goal.md
+      - 11_worker_summary.md
+      - .protocol/capabilities.yaml
+      - .protocol/graph_rules.yaml
+    output:
+      - .protocol/handoffs/<wp>/17_semantic_graph.json
+      - .protocol/handoffs/<wp>/18_impact_map.md
+      - .protocol/handoffs/<wp>/19_mermaid.md (enriched)
+
+  - phase: reviewer_focus
+    owner: scripts/tcad_reviewer_focus.py (Phase 3)
+    inputs:
+      - 17_semantic_graph.json
+      - 18_impact_map.md
+      - 10_acceptance_criteria.md
+    output:
+      - .protocol/handoffs/<wp>/20_reviewer_focus.md
+
+  - phase: verify
+    owner: reviewer-cli (different model than worker)
+    fallback_owner: claude-code-conductor
+    input:
+      - 09_reviewer_prompt.md
+      - 11_worker_summary.md
+      - 18_impact_map.md
+      - 20_reviewer_focus.md
+      - 15_diff.patch (only files flagged high-risk)
+    output: .protocol/handoffs/<wp>/14_review_result.md
+    constraint: reviewer != worker
+
+  - phase: log
+    owner: claude-code-conductor
+    inputs:
+      - closed WP folder
+    output:
+      - .protocol/journal/<date>-<wp-id>.md
+      - update .protocol/journal/INDEX.md
+      - update .protocol/atlas/atlas.json (Phase 2.5c)
+      - status.json -> IDLE, active_wp -> null

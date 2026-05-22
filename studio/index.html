@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TCAD Studio — building view</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">▣</div>
+      <div>
+        <h1 id="project-name">TCAD Studio</h1>
+        <p id="project-desc" class="muted">Loading blueprint…</p>
+      </div>
+    </div>
+    <div class="status-strip">
+      <div class="status-card">
+        <span class="label">Conductor</span>
+        <span id="conductor-state" class="value">—</span>
+      </div>
+      <div class="status-card">
+        <span class="label">Active WP</span>
+        <span id="active-wp" class="value">—</span>
+      </div>
+      <div class="status-card">
+        <span class="label">Open questions</span>
+        <span id="open-q" class="value">—</span>
+      </div>
+      <div class="status-card">
+        <span class="label">Last refresh</span>
+        <span id="last-refresh" class="value">—</span>
+      </div>
+      <button id="refresh-btn" title="Force refresh">↻</button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="building-panel">
+      <h2>Building</h2>
+      <p class="muted">Each floor is a module. Each room is a capability. Color = build status.</p>
+
+      <div class="legend">
+        <span class="chip chip-planned">planned</span>
+        <span class="chip chip-foundations">foundations</span>
+        <span class="chip chip-built">built</span>
+        <span class="chip chip-finished">finished</span>
+        <span class="chip chip-cracked">cracked</span>
+      </div>
+
+      <div id="building" class="building"></div>
+
+      <div id="construction-plan" class="construction-plan"></div>
+    </section>
+
+    <aside class="detail-panel">
+      <div id="detail-empty" class="detail-empty">
+        <p>Click a room to inspect it.</p>
+      </div>
+      <div id="detail" hidden>
+        <h2 id="detail-title">Room</h2>
+        <p id="detail-desc" class="muted"></p>
+        <dl class="detail-grid">
+          <dt>Status</dt><dd id="detail-status"></dd>
+          <dt>Progress</dt><dd id="detail-progress"></dd>
+          <dt>Files matching</dt><dd id="detail-files"></dd>
+          <dt>Lines of code</dt><dd id="detail-loc"></dd>
+          <dt>Allowed paths</dt><dd id="detail-paths"></dd>
+          <dt>Expected furniture</dt><dd id="detail-furniture"></dd>
+          <dt>Depends on</dt><dd id="detail-deps"></dd>
+          <dt>Built by Work Packages</dt><dd id="detail-wps"></dd>
+        </dl>
+      </div>
+    </aside>
+
+    <section class="timeline-panel">
+      <h2>Work Package timeline</h2>
+      <p class="muted">Story of what has been built. Click a WP to inspect.</p>
+      <div id="timeline" class="timeline"></div>
+    </section>
+
+    <section class="wp-detail-panel" id="wp-detail-panel" hidden>
+      <header>
+        <h2 id="wp-detail-title">Work Package</h2>
+        <button id="wp-detail-close">close</button>
+      </header>
+      <div id="wp-detail-body"></div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span class="muted small">
+      TCAD-H Studio v0 — Phase 1.7 / Phase 4 skeleton. Auto-refresh every 5s.
+      <a href="https://localhost/about" onclick="return false">no external assets</a>
+    </span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

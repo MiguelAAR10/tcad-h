@@ -1,0 +1,81 @@
+# Boundaries — coercive allow/deny zones at repo root.
+#
+# Phase 1.8 deliverable. Read by:
+#   - scripts/tcad_check_boundaries.py (firewall, exits non-zero on violation)
+#   - scripts/tcad_scan.py (watcher, emits boundary_warning events)
+#
+# Inheritance rules:
+#   1. Global rules (this file) apply ALWAYS.
+#   2. WP-specific 03_forbidden_files.md narrows the allow further.
+#   3. The intersection is what the worker may edit.
+#
+# Glob syntax: standard Python pathlib globs.
+#   - `foo/**` matches any depth under foo
+#   - `foo/*.py` matches Python files one level deep
+#   - `foo/**/*.py` matches Python files at any depth
+#
+# Determinism: this file is parsed by pure Python. No LLM. No interpretation.
+# A violation is a violation.
+
+schema_version: 1.0
+
+# Files the system may NEVER write to from any agent, regardless of WP scope.
+# Use this for protocol files, infrastructure, credentials, anything sacred.
+global_deny:
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - "OPENCODE.md"
+  - "PROTOCOL.md"
+  - ".protocol/method.md"
+  - ".protocol/conductor.yaml"
+  - ".protocol/workflow.yaml"
+  - ".protocol/boundaries.yaml"
+  - ".protocol/capabilities.yaml"
+  - ".protocol/blueprint/blueprint.yaml"
+  - ".env"
+  - ".env.*"
+  - "secrets/**"
+  - "infra/**"
+  - "migrations/**"
+
+# Files that always require explicit human approval before any agent may write.
+# scripts/tcad_check_boundaries.py emits a WARN (not FAIL) for these; the human
+# decides via the open questions protocol whether to proceed.
+require_human_approval:
+  - "**/schemas/**"
+  - "**/contracts/**"
+  - "**/openapi.json"
+  - "**/*.proto"
+  - "package.json"
+  - "pyproject.toml"
+  - "requirements*.txt"
+  - "Cargo.toml"
+
+# Files an agent may write to inside .protocol/ (overrides the global_deny rule).
+# Only WP-owned evidence files. Everything else under .protocol/ is read-only.
+protocol_write_allow:
+  - ".protocol/handoffs/WP-*/11_worker_summary.md"
+  - ".protocol/handoffs/WP-*/12_delta.md"
+  - ".protocol/handoffs/WP-*/13_blockers.md"
+  - ".protocol/handoffs/WP-*/14_review_result.md"
+  - ".protocol/handoffs/WP-*/15_diff.patch"
+  - ".protocol/handoffs/WP-*/21_open_questions.md"
+
+# Risk patterns: paths matching these elevate the WP risk level.
+# Used by scripts/tcad_scan.py to populate status.json.health.risk.
+# Deterministic — no LLM. First match wins. Order matters.
+risk_patterns:
+  high:
+    - "**/contracts/**"
+    - "**/schemas/**"
+    - "**/migrations/**"
+    - "infra/**"
+    - "**/auth/**"
+    - "**/security/**"
+    - ".github/workflows/**"
+  medium:
+    - "**/services/**"
+    - "**/models/**"
+    - "**/routers/**"
+    - "**/api/**"
+  low_default: true

@@ -1,0 +1,251 @@
+# Live blueprint for THIS repo (the TCAD-H framework itself).
+# Demonstrates the construction metaphor against a real project.
+# Studio reads this file by default (path: .protocol/blueprint/blueprint.yaml).
+
+schema_version: 1.0
+
+project:
+  name: "TCAD-H Protocol"
+  type: "agent"
+  description: "Multi-CLI Development Harness — coordinates coding agents via Work Packages."
+  repo_root: "."
+  blueprint_owner: "miguel"
+
+floors:
+
+  - id: protocol
+    label: "Protocol Core"
+    color_hint: "#3b82f6"
+    rooms:
+
+      - id: protocol.spec
+        label: "Specification"
+        description: "Iron rules, FSM, method"
+        allowed_paths:
+          - "PROTOCOL.md"
+          - ".protocol/method.md"
+          - ".protocol/conductor.yaml"
+          - ".protocol/workflow.yaml"
+        expected_furniture:
+          - "PROTOCOL.md (3-page spec)"
+          - "method.md (R-T-C-A-D-V-L)"
+          - "conductor.yaml (FSM)"
+          - "workflow.yaml (phase ownership)"
+        depends_on: []
+
+      - id: protocol.surfaces
+        label: "Agent surfaces"
+        description: "Per-agent instruction files"
+        allowed_paths:
+          - "AGENTS.md"
+          - "CLAUDE.md"
+          - "OPENCODE.md"
+        expected_furniture:
+          - "AGENTS.md (universal)"
+          - "CLAUDE.md (Conductor)"
+          - "OPENCODE.md (Worker)"
+        depends_on: [protocol.spec]
+
+  - id: handoff
+    label: "Handoff Pipeline"
+    color_hint: "#a855f7"
+    rooms:
+
+      - id: handoff.template
+        label: "WP template"
+        description: "Empty Work Package template"
+        allowed_paths:
+          - ".protocol/handoffs/_template/**"
+        expected_furniture:
+          - "12 template files (00..21)"
+        depends_on: [protocol.spec]
+
+      - id: handoff.generator
+        label: "WP generator"
+        description: "tcad_handoff.py script"
+        allowed_paths:
+          - "scripts/tcad_handoff.py"
+        expected_furniture:
+          - "argparse CLI"
+          - "slugify + auto-id"
+          - "validation pass"
+        depends_on: [handoff.template]
+
+      - id: handoff.example
+        label: "WP-000 example"
+        description: "Filled example Work Package"
+        allowed_paths:
+          - ".protocol/handoffs/WP-000-example-health-endpoint/**"
+        expected_furniture:
+          - "12 files populated"
+        depends_on: [handoff.template]
+
+  - id: memory
+    label: "Memory & Questions"
+    color_hint: "#f59e0b"
+    rooms:
+
+      - id: memory.questions
+        label: "Questions protocol"
+        description: "Blocking questions"
+        allowed_paths:
+          - ".protocol/questions/**"
+        expected_furniture:
+          - "INDEX.md"
+          - "ANSWERED.md"
+        depends_on: [protocol.spec]
+
+      - id: memory.journal
+        label: "Journal (sharded)"
+        description: "Per-WP journal entries"
+        allowed_paths:
+          - ".protocol/journal/**"
+        expected_furniture:
+          - "INDEX.md"
+          - "YYYY-MM-DD-NNN.md entries"
+        depends_on: [handoff.generator]
+
+  - id: conductor
+    label: "Conductor FSM"
+    color_hint: "#ef4444"
+    rooms:
+
+      - id: conductor.script
+        label: "tcad_conduct.py"
+        description: "FSM enforcer + state file (Phase 1.5)"
+        allowed_paths:
+          - "scripts/tcad_conduct.py"
+          - ".protocol/status.json"
+        expected_furniture:
+          - "status command"
+          - "transition <STATE>"
+          - "add-question / resolve-question"
+        depends_on: [protocol.spec, memory.questions]
+
+  - id: evidence
+    label: "Evidence Capture"
+    color_hint: "#06b6d4"
+    rooms:
+
+      - id: evidence.log
+        label: "tcad_log.py"
+        description: "Captures diff + summary + journal (Phase 2)"
+        allowed_paths:
+          - "scripts/tcad_log.py"
+        expected_furniture:
+          - "git diff capture"
+          - "11_worker_summary validation"
+          - "journal entry generation"
+        depends_on: [memory.journal, conductor.script]
+
+  - id: atlas
+    label: "Development Atlas"
+    color_hint: "#8b5cf6"
+    rooms:
+
+      - id: atlas.static
+        label: "Static graph"
+        description: "Deterministic AST + imports (Phase 2.5a)"
+        allowed_paths:
+          - "scripts/tcad_graph_static.py"
+        expected_furniture:
+          - "tree-sitter parse"
+          - "code_graph.json"
+          - "basic mermaid"
+        depends_on: [evidence.log]
+
+      - id: atlas.semantic
+        label: "Semantic graph"
+        description: "LLM-enriched labels (Phase 2.5b)"
+        allowed_paths:
+          - "scripts/tcad_graph_enrich.py"
+          - ".protocol/capabilities.yaml"
+          - ".protocol/graph_rules.yaml"
+        expected_furniture:
+          - "capability mapping"
+          - "risk scoring"
+          - "impact_map"
+        depends_on: [atlas.static]
+
+      - id: atlas.cross_wp
+        label: "Atlas (cross-WP)"
+        description: "Composed view, heatmap, timeline (Phase 2.5c)"
+        allowed_paths:
+          - "scripts/tcad_atlas.py"
+          - ".protocol/atlas/**"
+        expected_furniture:
+          - "atlas.json"
+          - "heatmap.md"
+          - "capabilities_timeline.md"
+        depends_on: [atlas.semantic]
+
+  - id: studio
+    label: "TCAD Studio"
+    color_hint: "#22c55e"
+    rooms:
+
+      - id: studio.server
+        label: "Localhost server"
+        description: "Python stdlib http server"
+        allowed_paths:
+          - "studio/server.py"
+        expected_furniture:
+          - "/api/state endpoint"
+          - "/api/wp/<id> endpoint"
+          - "static file server"
+        depends_on: [protocol.spec]
+
+      - id: studio.ui
+        label: "Construction view"
+        description: "HTML/CSS/JS building visualization"
+        allowed_paths:
+          - "studio/index.html"
+          - "studio/styles.css"
+          - "studio/app.js"
+        expected_furniture:
+          - "blueprint floorplan"
+          - "WP timeline"
+          - "room detail panel"
+          - "auto-refresh"
+        depends_on: [studio.server]
+
+pipes:
+  - from: handoff.generator
+    to: handoff.template
+    via: "reads template files"
+
+  - from: handoff.example
+    to: handoff.template
+    via: "instance of template"
+
+  - from: conductor.script
+    to: handoff.generator
+    via: "invokes WP creation"
+
+  - from: evidence.log
+    to: memory.journal
+    via: "writes journal entries"
+
+  - from: atlas.static
+    to: evidence.log
+    via: "reads diff.patch"
+
+  - from: studio.ui
+    to: studio.server
+    via: "HTTP /api/*"
+
+  - from: studio.server
+    to: handoff.generator
+    via: "reads .protocol/handoffs/"
+
+construction_plan:
+  - phase: "Phase 1 — Foundations"
+    rooms: [protocol.spec, protocol.surfaces, handoff.template, handoff.generator, handoff.example, memory.questions]
+  - phase: "Phase 1.5 — Conductor"
+    rooms: [conductor.script]
+  - phase: "Phase 1.7 — Blueprint + Studio v0"
+    rooms: [studio.server, studio.ui]
+  - phase: "Phase 2 — Evidence"
+    rooms: [evidence.log, memory.journal]
+  - phase: "Phase 2.5 — Atlas"
+    rooms: [atlas.static, atlas.semantic, atlas.cross_wp]

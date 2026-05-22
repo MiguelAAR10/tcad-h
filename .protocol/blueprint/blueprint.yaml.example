@@ -1,0 +1,151 @@
+# TCAD-H Blueprint — project as building
+# Schema version: 1.0 (Phase 1.7)
+#
+# A blueprint declares the planned ARCHITECTURE of the project as a building.
+# Work Packages incrementally fill it. The Studio renders the building and
+# colors each room by its current build status.
+#
+# Construction metaphor:
+#   project   = building
+#   floor     = top-level module (backend, frontend, infra, docs)
+#   room      = capability inside a floor (auth, billing, dashboard)
+#   furniture = files / functions / endpoints inside a room
+#   lights    = tests covering the room
+#   pipes     = contracts / integrations between rooms
+#   crew      = Work Package (one or more crews build one or more rooms)
+#   materials = lines of code
+#
+# Room status:
+#   planned       (gray)   — declared, no code yet
+#   foundations   (yellow) — active WP, code starting
+#   built         (blue)   — code exists, tests partial or missing
+#   finished      (green)  — code + tests + reviewer PASS
+#   cracked       (red)    — failing tests or open blocking question
+#
+# Studio reads this file plus .protocol/handoffs/WP-*/ to render the building.
+
+schema_version: 1.0
+
+project:
+  name: "<project name>"
+  type: "<saas | cli | mobile | library | agent | other>"
+  description: "<one sentence>"
+  repo_root: "<absolute or relative path to project root>"
+  blueprint_owner: "<who maintains this file>"
+
+# Floors are ordered top-to-bottom in the Studio view.
+# Each floor groups a coherent area of the system.
+floors:
+
+  - id: backend
+    label: "Backend"
+    color_hint: "#3b82f6"   # studio uses this only as accent; status colors override
+    rooms:
+
+      - id: backend.auth
+        label: "Authentication"
+        description: "Login, session, password reset"
+        allowed_paths:
+          - "backend/app/auth/**"
+          - "backend/tests/**/test_auth*"
+        expected_furniture:
+          - "JWT issuer"
+          - "Session middleware"
+          - "Password reset flow"
+        contracts:
+          - "POST /api/auth/login"
+          - "POST /api/auth/logout"
+          - "POST /api/auth/refresh"
+        depends_on: []
+        # Filled by Studio at render time from WP history:
+        # status: planned | foundations | built | finished | cracked
+        # progress: 0..1
+        # built_by_wps: [WP-NNN-slug]
+
+      - id: backend.api
+        label: "Public API"
+        description: "REST endpoints for the dashboard"
+        allowed_paths:
+          - "backend/app/routers/**"
+        expected_furniture:
+          - "User CRUD"
+          - "Health endpoint"
+          - "Reports endpoint"
+        depends_on: [backend.auth]
+
+  - id: frontend
+    label: "Frontend"
+    color_hint: "#10b981"
+    rooms:
+
+      - id: frontend.shell
+        label: "App shell"
+        description: "Router, layout, theme"
+        allowed_paths:
+          - "frontend/src/app/**"
+        expected_furniture:
+          - "Root layout"
+          - "Theme provider"
+        depends_on: []
+
+      - id: frontend.dashboard
+        label: "Dashboard"
+        description: "Main user dashboard"
+        allowed_paths:
+          - "frontend/src/app/dashboard/**"
+        expected_furniture:
+          - "Overview widgets"
+          - "Reports view"
+        depends_on: [frontend.shell, backend.api]
+
+  - id: infra
+    label: "Infrastructure"
+    color_hint: "#a855f7"
+    rooms:
+
+      - id: infra.deploy
+        label: "Deployment"
+        description: "CI/CD, hosting, secrets"
+        allowed_paths:
+          - "infra/**"
+          - ".github/workflows/**"
+        expected_furniture:
+          - "CI pipeline"
+          - "Production deploy"
+        depends_on: []
+
+  - id: docs
+    label: "Documentation"
+    color_hint: "#f59e0b"
+    rooms:
+
+      - id: docs.user
+        label: "User docs"
+        allowed_paths:
+          - "docs/**"
+        expected_furniture:
+          - "Getting started"
+          - "API reference"
+        depends_on: []
+
+# Pipes are integration contracts between rooms.
+# Studio renders these as lines between rooms, colored by contract health.
+pipes:
+  - from: frontend.dashboard
+    to: backend.api
+    via: "HTTP / OpenAPI"
+    contract_file: "backend/openapi.json"
+
+  - from: backend.api
+    to: backend.auth
+    via: "internal session check"
+
+# Optional: declare the order in which crews are expected to arrive.
+# Studio renders a Gantt-ish timeline using WP creation dates merged with this.
+construction_plan:
+  - phase: "foundations"
+    rooms: [backend.auth, infra.deploy]
+  - phase: "structure"
+    rooms: [backend.api, frontend.shell]
+  - phase: "finishings"
+    rooms: [frontend.dashboard, docs.user]

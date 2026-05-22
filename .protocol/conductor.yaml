@@ -1,0 +1,214 @@
+# Conductor Agent Specification
+# Read by tcad_conduct.py (Phase 1.5) and by Claude Code via CLAUDE.md.
+
+version: 2.4
+agent: TCAD-H Conductor
+runs_on: claude-code-interface + tcad_conduct.py-fsm
+
+responsibilities:
+  - Convert human intent into spec.md
+  - Generate Work Packages from specs
+  - Route work to the appropriate worker CLI per role
+  - Track state through the FSM
+  - Trigger Atlas generation post-execution (Phase 2.5+)
+  - Produce reviewer focus brief
+  - Generate questions when evidence is ambiguous or violations are detected
+  - Update the journal on Work Package close
+  - Never write production code
+
+forbidden:
+  - Direct code edits to repo (application files)
+  - Skipping FSM transitions
+  - Approving its own Work Package as Reviewer
+  - Modifying .protocol/boundaries.yaml without explicit human GO
+  - Reusing conversation history as substitute for reading artifact files
+
+state_persistence: .protocol/status.json
+
+state_machine:
+  initial: IDLE
+
+  states:
+    - IDLE
+    - INTAKE
+    - SPEC_DRAFT
+    - HANDOFF_GEN
+    - WORKER_BRIEF
+    - WORKER_DONE
+    - ATLAS_GEN
+    - ATLAS_FAIL
+    - REVIEWING
+    - PASS
+    - PASS_WITH_NOTES
+    - FAIL
+    - FIX_REQUEST
+    - ESCALATE
+    - REWRITE_WP
+    - LOG
+    - DONE
+
+  transitions:
+    - from: IDLE
+      to: INTAKE
+      guard: human-request-received
+
+    - from: INTAKE
+      to: SPEC_DRAFT
+      guard: spec-draft-written
+      artifact: specs/<id>/spec.md
+
+    - from: SPEC_DRAFT
+      to: INTAKE
+      guard: spec-rejected-by-human
+      max_iterations: 3
+
+    - from: SPEC_DRAFT
+      to: HANDOFF_GEN
+      guard: spec-approved-by-human
+
+    - from: HANDOFF_GEN
+      to: WORKER_BRIEF
+      guard: work-package-complete
+      artifact: .protocol/handoffs/WP-NNN-*/00..10*.md
+
+    - from: WORKER_BRIEF
+      to: WORKER_DONE
+      guard: worker-wrote-11_summary
+
+    - from: WORKER_BRIEF
+      to: REWRITE_WP
+      guard: worker-wrote-12_delta
+
+    - from: WORKER_BRIEF
+      to: ESCALATE
+      guard: worker-wrote-13_blockers
+
+    - from: WORKER_DONE
+      to: ATLAS_GEN
+      guard: phase-2.5-enabled
+      fallback_to: REVIEWING       # if Atlas not yet available
+
+    - from: ATLAS_GEN
+      to: REVIEWING
+      guard: atlas-artifacts-present
+
+    - from: ATLAS_GEN
+      to: ATLAS_FAIL
+      guard: atlas-script-failed
+
+    - from: ATLAS_FAIL
+      to: REVIEWING
+      note: proceed without graph, flag in 14_review_result
+
+    - from: REVIEWING
+      to: PASS
+      guard: reviewer-verdict-pass
+
+    - from: REVIEWING
+      to: PASS_WITH_NOTES
+      guard: reviewer-verdict-pass-with-notes
+
+    - from: REVIEWING
+      to: FAIL
+      guard: reviewer-verdict-fail
+
+    - from: FAIL
+      to: FIX_REQUEST
+      guard: attempt_count < 3
+
+    - from: FAIL
+      to: ESCALATE
+      guard: attempt_count >= 3
+
+    - from: FIX_REQUEST
+      to: WORKER_BRIEF
+      effect: attempt_count += 1
+
+    - from: PASS
+      to: LOG
+    - from: PASS_WITH_NOTES
+      to: LOG
+
+    - from: LOG
+      to: DONE
+      artifact: .protocol/journal/<date>-<id>.md
+
+    - from: DONE
+      to: IDLE
+      effect: status.active_wp = null
+
+guards_implementation:
+  # Map guard names to file checks (Python-friendly)
+  human-request-received: "external trigger via tcad_conduct.py intake"
+  spec-draft-written: "file_exists(specs/<id>/spec.md)"
+  spec-approved-by-human: "external GO via tcad_conduct.py approve"
+  spec-rejected-by-human: "external NACK via tcad_conduct.py reject"
+  work-package-complete: "all files 00..10*.md exist in WP folder"
+  worker-wrote-11_summary: "file_exists(WP/11_worker_summary.md) AND contains('NEXT STEP: ready for review')"
+  worker-wrote-12_delta: "file_exists(WP/12_delta.md) AND non_empty"
+  worker-wrote-13_blockers: "file_exists(WP/13_blockers.md) AND non_empty"
+  phase-2.5-enabled: "exists(scripts/tcad_graph_static.py)"
+  atlas-artifacts-present: "all files 16..20 exist in WP folder"
+  atlas-script-failed: "atlas script exited non-zero"
+  reviewer-verdict-pass: "file_exists(WP/14_review_result.md) AND contains('VERDICT: PASS')"
+  reviewer-verdict-pass-with-notes: "file_exists(WP/14_review_result.md) AND contains('VERDICT: PASS_WITH_NOTES')"
+  reviewer-verdict-fail: "file_exists(WP/14_review_result.md) AND contains('VERDICT: FAIL')"
+
+artifacts_produced:
+  - specs/<id>/spec.md
+  - specs/<id>/plan.md
+  - specs/<id>/tasks.md
+  - .protocol/handoffs/WP-NNN/00_context.md
+  - .protocol/handoffs/WP-NNN/01_goal.md
+  - .protocol/handoffs/WP-NNN/02_allowed_files.md
+  - .protocol/handoffs/WP-NNN/03_forbidden_files.md
+  - .protocol/handoffs/WP-NNN/04_existing_decisions.md
+  - .protocol/handoffs/WP-NNN/05_worker_prompt_*.md
+  - .protocol/handoffs/WP-NNN/09_reviewer_prompt.md
+  - .protocol/handoffs/WP-NNN/10_acceptance_criteria.md
+  - .protocol/handoffs/WP-NNN/21_open_questions.md
+  - .protocol/journal/<date>-<wp-id>.md
+
+artifacts_consumed:
+  - AGENTS.md
+  - CLAUDE.md
+  - PROTOCOL.md
+  - .protocol/method.md
+  - .protocol/boundaries.yaml
+  - .protocol/capabilities.yaml
+  - .protocol/status.json
+  - specs/<active>/*
+  - .protocol/journal/INDEX.md (last 3 entries)
+  - .protocol/questions/INDEX.md
+
+routing:
+  # Tool-by-role (not API model routing). Defaults below are UNVERIFIED
+  # and should be revised after Phase 4 (evals + measurements).
+  intake: claude-code
+  spec_draft: claude-code
+  handoff_gen: claude-code
+  worker_backend:
+    primary: [opencode-kimi, opencode-gpt]
+    status: UNVERIFIED
+  worker_frontend:
+    primary: [opencode-qwen]
+    status: UNVERIFIED
+  worker_tests:
+    primary: [opencode-minimax]
+    status: UNVERIFIED
+  worker_reading:
+    primary: [opencode-deepseek]
+    status: UNVERIFIED
+  reviewer:
+    primary: [opencode-gpt-codex, claude-code]
+    constraint: must-be-different-cli-or-model-than-worker
+  log: claude-code
+
+token_budgets:
+  # Soft limits; the FSM warns when exceeded.
+  intake:        { max_context: 8000,  max_output: 2000 }
+  spec_draft:    { max_context: 12000, max_output: 4000 }
+  handoff_gen:   { max_context: 20000, max_output: 6000 }
+  worker:        { max_context: 12000, max_output: 4000 }
+  reviewer:      { max_context: 15000, max_output: 3000 }
+  log:           { max_context: 6000,  max_output: 1500 }

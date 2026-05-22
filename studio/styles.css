@@ -1,0 +1,300 @@
+/* TCAD Studio — Phase 1.7 / Phase 4 v0 stylesheet.
+   No external fonts, no CDN. Dark theme, blueprint-inspired. */
+
+:root {
+  --bg: #0b0f14;
+  --bg-elev: #121821;
+  --bg-elev-2: #1b2330;
+  --line: #1f2a3a;
+  --line-strong: #2c3a4f;
+  --text: #d6e3f4;
+  --text-dim: #8898ad;
+  --muted: #5b6a82;
+  --accent: #38bdf8;
+
+  --c-planned:     #45526a;
+  --c-foundations: #facc15;
+  --c-built:       #38bdf8;
+  --c-finished:    #22c55e;
+  --c-cracked:     #ef4444;
+
+  --c-planned-soft:     #2a3346;
+  --c-foundations-soft: #4a3e10;
+  --c-built-soft:       #0e3b58;
+  --c-finished-soft:    #0f3a22;
+  --c-cracked-soft:     #471616;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+body {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+h1, h2, h3 { margin: 0 0 .5rem 0; font-weight: 600; letter-spacing: .02em; }
+h1 { font-size: 1.05rem; }
+h2 { font-size: 0.95rem; color: var(--text); }
+p { margin: .2rem 0; }
+.muted { color: var(--text-dim); }
+.small { font-size: 0.78rem; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1.2rem;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: .8rem; }
+.brand .logo {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  font-size: 1.4rem;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--accent);
+}
+.status-strip { display: flex; gap: .6rem; align-items: stretch; }
+.status-card {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: .35rem .8rem;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-width: 110px;
+}
+.status-card .label {
+  font-size: .68rem; color: var(--text-dim); letter-spacing: .12em; text-transform: uppercase;
+}
+.status-card .value { font-weight: 600; color: var(--text); }
+#refresh-btn {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  padding: 0 .8rem;
+  border-radius: 6px;
+}
+#refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "building detail"
+    "timeline timeline";
+  gap: 1rem;
+  padding: 1rem;
+  flex: 1;
+}
+.building-panel  { grid-area: building; }
+.detail-panel    { grid-area: detail; }
+.timeline-panel  { grid-area: timeline; }
+
+.building-panel,
+.detail-panel,
+.timeline-panel,
+.wp-detail-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+}
+
+footer {
+  padding: .8rem 1.2rem;
+  border-top: 1px solid var(--line);
+  background: var(--bg-elev);
+  text-align: center;
+}
+
+/* ---------- Building ---------- */
+.legend { display: flex; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .15rem .6rem;
+  font-size: .72rem; letter-spacing: .08em;
+  border-radius: 999px;
+  text-transform: uppercase;
+  border: 1px solid var(--line-strong);
+}
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c-planned); }
+.chip-planned::before     { background: var(--c-planned); }
+.chip-foundations::before { background: var(--c-foundations); }
+.chip-built::before       { background: var(--c-built); }
+.chip-finished::before    { background: var(--c-finished); }
+.chip-cracked::before     { background: var(--c-cracked); }
+
+.building {
+  display: flex; flex-direction: column-reverse; /* ground floor at bottom */
+  gap: .6rem;
+  padding: .8rem;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(255,255,255,.02) 23px 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, rgba(255,255,255,.02) 23px 24px),
+    var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 200px;
+}
+.floor {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg-elev-2);
+}
+.floor-head {
+  padding: .4rem .8rem;
+  font-size: .78rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.floor-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: .5rem;
+  padding: .6rem;
+}
+.room {
+  cursor: pointer;
+  padding: .55rem .7rem;
+  border: 1px solid var(--line-strong);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: var(--bg-elev);
+  transition: transform .06s ease, border-color .12s ease;
+  position: relative;
+  overflow: hidden;
+}
+.room:hover { transform: translateY(-1px); border-color: var(--accent); }
+.room.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+.room.status-planned     { border-left-color: var(--c-planned);     background: linear-gradient(180deg, var(--c-planned-soft)     0%, var(--bg-elev) 70%); }
+.room.status-foundations { border-left-color: var(--c-foundations); background: linear-gradient(180deg, var(--c-foundations-soft) 0%, var(--bg-elev) 70%); }
+.room.status-built       { border-left-color: var(--c-built);       background: linear-gradient(180deg, var(--c-built-soft)       0%, var(--bg-elev) 70%); }
+.room.status-finished    { border-left-color: var(--c-finished);    background: linear-gradient(180deg, var(--c-finished-soft)    0%, var(--bg-elev) 70%); }
+.room.status-cracked     { border-left-color: var(--c-cracked);     background: linear-gradient(180deg, var(--c-cracked-soft)     0%, var(--bg-elev) 70%); }
+
+.room .room-label { font-weight: 600; }
+.room .room-id { font-size: .68rem; color: var(--text-dim); }
+.room .room-meta { display: flex; gap: .5rem; font-size: .72rem; color: var(--text-dim); margin-top: .25rem; }
+.room .progress {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 3px;
+  background: var(--accent);
+  transition: width .25s ease;
+}
+
+/* ---------- Detail ---------- */
+.detail-panel { min-height: 220px; }
+.detail-empty { color: var(--text-dim); text-align: center; padding: 2rem 0; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: .25rem 1rem;
+  margin: .5rem 0 0;
+}
+.detail-grid dt { color: var(--text-dim); font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; }
+.detail-grid dd { margin: 0; }
+.detail-grid ul { margin: 0; padding-left: 1rem; }
+.detail-grid code, .detail-grid .path {
+  font-size: .78rem; background: var(--bg-elev-2); padding: 1px 4px; border-radius: 3px;
+}
+
+/* ---------- Timeline ---------- */
+.timeline {
+  display: flex; gap: .6rem; overflow-x: auto;
+  padding: .4rem 0;
+}
+.wp-card {
+  flex: 0 0 220px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line-strong);
+  border-left-width: 4px;
+  border-radius: 4px;
+  padding: .6rem .8rem;
+  cursor: pointer;
+}
+.wp-card:hover { border-color: var(--accent); }
+.wp-card .wp-id { font-weight: 600; font-size: .8rem; }
+.wp-card .wp-goal { color: var(--text); font-size: .78rem; margin: .25rem 0; }
+.wp-card .wp-meta { color: var(--text-dim); font-size: .7rem; display: flex; gap: .4rem; flex-wrap: wrap; }
+
+.wp-card.status-draft      { border-left-color: var(--c-planned); }
+.wp-card.status-review     { border-left-color: var(--c-built); }
+.wp-card.status-graduated  { border-left-color: var(--c-finished); }
+.wp-card.status-rewrite    { border-left-color: var(--c-foundations); }
+.wp-card.status-failed     { border-left-color: var(--c-cracked); }
+.wp-card.status-blocked    { border-left-color: var(--c-cracked); }
+
+/* ---------- WP detail overlay ---------- */
+.wp-detail-panel {
+  grid-area: timeline;
+  position: relative;
+  margin-top: .5rem;
+}
+.wp-detail-panel header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.wp-detail-panel button {
+  background: var(--bg-elev-2); color: var(--text);
+  border: 1px solid var(--line-strong); border-radius: 4px;
+  padding: .2rem .6rem; cursor: pointer; font: inherit;
+}
+.wp-detail-panel button:hover { border-color: var(--accent); }
+.wp-file-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+.wp-file-list span {
+  font-size: .72rem; background: var(--bg-elev-2);
+  padding: .15rem .5rem; border-radius: 3px; border: 1px solid var(--line);
+}
+.wp-file-content {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .6rem;
+  overflow: auto;
+  max-height: 280px;
+  font-size: .76rem;
+  white-space: pre-wrap;
+}
+
+/* ---------- Construction plan ---------- */
+.construction-plan { display: flex; gap: .5rem; margin-top: .8rem; flex-wrap: wrap; }
+.plan-phase {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .4rem .7rem;
+  font-size: .76rem;
+  color: var(--text-dim);
+}
+.plan-phase strong { color: var(--text); display: block; margin-bottom: .2rem; font-size: .72rem; }
+
+/* ---------- Pipes (lines between rooms) ---------- */
+.pipes-overlay { pointer-events: none; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "building"
+      "detail"
+      "timeline";
+  }
+}

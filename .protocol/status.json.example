@@ -1,0 +1,23 @@
+{
+  "schema_version": "2.4",
+  "active_wp": null,
+  "state": "IDLE",
+  "attempt_count": 0,
+  "open_questions": [],
+  "last_transition": null,
+  "history": [],
+  "metadata": {
+    "conductor": "claude-code",
+    "started_at": null,
+    "tokens_estimated": 0
+  },
+  "notes": [
+    "Rename to status.json once Phase 1.5 (tcad_conduct.py) lands.",
+    "active_wp is the WP-NNN-slug folder name under .protocol/handoffs/, null when IDLE.",
+    "state must be one of the states declared in .protocol/conductor.yaml > state_machine.states.",
+    "attempt_count is the FIX_REQUEST cycle count for the current WP; resets on DONE.",
+    "open_questions is a list of Q-IDs from .protocol/questions/INDEX.md that block transitions.",
+    "history is append-only: { state, timestamp, artifact, agent }.",
+    "Phase 1 (current): this file is example-only. Phase 1.5 will create the live status.json."
+  ]
+}

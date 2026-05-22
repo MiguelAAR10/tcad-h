@@ -1,0 +1,108 @@
+# Capabilities — semantic map of code to business value.
+#
+# Phase 1.8 deliverable. Read by:
+#   - scripts/tcad_scan.py (assigns changed files to capabilities)
+#   - studio/server.py (renders capability-level progress)
+#
+# Mentor critique applied:
+#   Deterministic glob mapping. NO LLM classification. LLM only summarizes
+#   what changed in a human-readable line inside 18_impact_map.md (Phase 2.5b).
+#
+# Why this matters:
+#   The point of TCAD-H is fighting Comprehension Debt. A diff of 500 lines
+#   means nothing to a senior. "Worker T2 completed the 'Auth Gateway'
+#   capability (15% remaining)" means everything.
+#
+# Schema:
+#   - id: dotted, lowercase
+#   - label: short human label
+#   - metaphor: building-analogy phrase (rendered by Studio)
+#   - description: one-line business meaning
+#   - layer: where in the stack (frontend|backend|infra|docs|tests|agent)
+#   - files_glob: which paths belong to this capability (DETERMINISTIC)
+#   - depends_on: other capability ids
+#   - public_api: optional list of endpoints/exports that mark its surface
+
+schema_version: 1.0
+
+capabilities:
+
+  - id: auth.gateway
+    label: "Auth Gateway"
+    metaphor: "Main entrance turnstile"
+    description: "Validates credentials and issues sessions."
+    layer: backend
+    files_glob:
+      - "backend/app/auth/**"
+      - "backend/app/routers/auth*.py"
+      - "backend/tests/**/test_auth*.py"
+    depends_on: []
+    public_api:
+      - "POST /api/auth/login"
+      - "POST /api/auth/logout"
+      - "POST /api/auth/refresh"
+
+  - id: auth.session
+    label: "Session Badge"
+    metaphor: "Visitor badge that expires"
+    description: "Tracks active user sessions and enforces expiry."
+    layer: backend
+    files_glob:
+      - "backend/app/session/**"
+      - "backend/app/middleware/session*.py"
+      - "backend/tests/**/test_session*.py"
+    depends_on: [auth.gateway]
+
+  - id: ui.login_form
+    label: "Login Door"
+    metaphor: "Visible front door for users"
+    description: "Login form, error states, redirect after success."
+    layer: frontend
+    files_glob:
+      - "frontend/src/features/auth/**"
+      - "frontend/src/pages/login*.tsx"
+    depends_on: [auth.gateway]
+
+  - id: ui.dashboard
+    label: "Control Room"
+    metaphor: "Main dashboard where the user actually works"
+    description: "Authenticated user landing area."
+    layer: frontend
+    files_glob:
+      - "frontend/src/features/dashboard/**"
+      - "frontend/src/pages/dashboard*.tsx"
+    depends_on: [auth.session]
+
+  - id: infra.ci
+    label: "Construction Crew"
+    metaphor: "The crew that signs off the building before opening"
+    description: "CI pipeline + deploys."
+    layer: infra
+    files_glob:
+      - ".github/workflows/**"
+      - "infra/**"
+    depends_on: []
+
+  - id: docs.user
+    label: "Building Signs"
+    metaphor: "Signs that explain where things are"
+    description: "User-facing documentation."
+    layer: docs
+    files_glob:
+      - "docs/**/*.md"
+      - "README.md"
+    depends_on: []
+
+# Files NOT matched by any capability appear in Studio under "orphans".
+# Orphans are not a bug — they may be legitimate (config, test helpers).
+# But a high orphan ratio signals that capabilities.yaml is out of date.
+orphan_globs_excluded:
+  - "*.lock"
+  - "*.lockb"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"
+  - "yarn.lock"
+  - "**/__pycache__/**"
+  - "**/.pytest_cache/**"
+  - "**/node_modules/**"
+  - ".git/**"
