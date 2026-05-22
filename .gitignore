@@ -1,0 +1,19 @@
+# TCAD-H runtime artifacts
+.protocol/worktrees/
+.protocol/status.lock
+
+# Caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local secrets — never commit
+.env
+.env.*
+secrets/
