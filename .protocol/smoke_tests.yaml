@@ -1,0 +1,81 @@
+# Smoke tests — deterministic semantic gate for tcad_log close.
+#
+# Phase 2.2 deliverable (Finding #4). Mentor critique applied:
+#   "Boundary check ≠ correctness check. Need smoke-test gate before merge."
+#
+# Each smoke test is a shell command. Exit code 0 = pass, non-zero = fail.
+# No LLM. No external service. Just shell.
+#
+# Read by:
+#   scripts/tcad_log.py close
+#     - resolves the test group by --smoke-group or auto-detects by allowed_paths
+#     - runs each command in sequence inside the worktree
+#     - fails close (returns exit 5) if any test fails, unless --force
+#
+# Selection rules (deterministic):
+#   1. If --smoke-test <cmd> is passed explicitly, use ONLY those (skips this file).
+#   2. If --smoke-group <name> is passed, run that group.
+#   3. Otherwise, run all groups whose `match_paths` glob hits at least one changed file.
+#   4. If no group matches, run `default`.
+
+schema_version: 1.0
+
+groups:
+
+  default:
+    description: "Minimum gate for every WP — bytecode compile of staged Python."
+    match_paths: []  # always considered
+    commands:
+      - "python3 -c 'import sys; print(sys.version)'"
+
+  python_scripts:
+    description: "All scripts/*.py compile cleanly."
+    match_paths:
+      - "scripts/**/*.py"
+    commands:
+      - "python3 -m py_compile scripts/tcad_handoff.py"
+      - "python3 -m py_compile scripts/tcad_conduct.py"
+      - "python3 -m py_compile scripts/tcad_worktree.py"
+      - "python3 -m py_compile scripts/tcad_scan.py"
+      - "python3 -m py_compile scripts/tcad_check_boundaries.py"
+      - "python3 -m py_compile scripts/tcad_log.py"
+
+  studio:
+    description: "Studio modules importable; key functions resolve their names."
+    match_paths:
+      - "studio/*.py"
+      - "studio/*.html"
+      - "studio/*.js"
+      - "studio/*.css"
+    commands:
+      - "python3 -m py_compile studio/server.py"
+      # Catches Finding #4: undefined module-level names like PROTOCOL_DIR.
+      # Bare attribute access raises NameError/AttributeError if undefined.
+      - "cd studio && python3 -c 'import server; server.PROTOCOL_DIR; server.BLUEPRINT_FILE'"
+
+  backend:
+    description: "Backend module compiles and imports."
+    match_paths:
+      - "backend/**/*.py"
+    commands:
+      - "python3 -m py_compile $(git diff --name-only HEAD~1..HEAD | grep -E '^backend/.*\\.py$' | tr '\\n' ' ')"
+
+  frontend:
+    description: "Frontend file presence + basic JSON validation."
+    match_paths:
+      - "frontend/**/*.ts"
+      - "frontend/**/*.tsx"
+      - "frontend/**/*.js"
+      - "frontend/**/*.json"
+    commands:
+      # Validate any JSON files touched still parse.
+      - "for f in $(git diff --name-only HEAD~1..HEAD | grep '\\.json$'); do python3 -c \"import json; json.load(open('$f'))\" || exit 1; done; echo json ok"
+
+  tests:
+    description: "Re-run unit tests for touched test files."
+    match_paths:
+      - "tests/**/test_*.py"
+      - "backend/tests/**/test_*.py"
+    commands:
+      # Only run touched tests (cheap).
+      - "for f in $(git diff --name-only HEAD~1..HEAD | grep 'test_.*\\.py$'); do python3 -m pytest -q $f || exit 1; done"

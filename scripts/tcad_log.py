@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import subprocess
 import sys
@@ -48,7 +49,12 @@ from pathlib import Path
 from typing import Any
 
 SCRIPT_PATH = Path(__file__).resolve()
-ROOT = SCRIPT_PATH.parent.parent
+# Phase 2.2 Finding #2 fix: resolve root via shared helper, not naive parent.parent.
+# tcad_log.py may be invoked from a worktree where SCRIPT_PATH.parent.parent
+# points to a stale .protocol/ snapshot.
+sys.path.insert(0, str(SCRIPT_PATH.parent))  # noqa
+from _tcad_root import resolve_tcad_root  # noqa: E402
+ROOT = resolve_tcad_root(os.environ.get("TCAD_ROOT"))
 PROTOCOL_DIR = ROOT / ".protocol"
 STATUS_FILE = PROTOCOL_DIR / "status.json"
 EVENTS_FILE = PROTOCOL_DIR / "events.jsonl"
@@ -59,6 +65,10 @@ LOCK_FILE = PROTOCOL_DIR / "status.lock"
 
 sys.path.insert(0, str(SCRIPT_PATH.parent))
 from _tcad_lock import status_lock  # noqa: E402
+from tcad_check_boundaries import load_yaml, _match_glob  # noqa: E402
+
+SMOKE_FILE = PROTOCOL_DIR / "smoke_tests.yaml"
+SMOKE_EXAMPLE = PROTOCOL_DIR / "smoke_tests.yaml.example"
 
 # Required sections in 11_worker_summary.md (OPENCODE.md contract).
 REQUIRED_SUMMARY_SECTIONS = [
@@ -185,6 +195,81 @@ def parse_summary(path: Path) -> dict:
     return info
 
 
+def select_smoke_commands(
+    changed_files: list[str],
+    group: str | None,
+    explicit: list[str] | None,
+) -> tuple[list[str], list[str]]:
+    """Pick smoke-test commands deterministically.
+
+    Returns (commands, group_names_used).
+
+    Order of precedence:
+      1. explicit --smoke-test commands → use them directly, skip YAML.
+      2. --smoke-group <name> → use that group only.
+      3. auto-detect: any group whose match_paths globs hit any changed file.
+      4. fallback to 'default' group.
+    """
+    if explicit:
+        return list(explicit), ["explicit"]
+
+    cfg = load_yaml(SMOKE_FILE) or load_yaml(SMOKE_EXAMPLE) or {}
+    groups = cfg.get("groups", {}) or {}
+
+    if group:
+        g = groups.get(group)
+        if not g:
+            return [], []
+        return list(g.get("commands", []) or []), [group]
+
+    # Auto-detect by changed_files vs match_paths globs.
+    picked: list[str] = []
+    used: list[str] = []
+    for gname, gdef in groups.items():
+        if gname == "default":
+            continue
+        match_paths = gdef.get("match_paths", []) or []
+        if not match_paths:
+            continue
+        if any(_match_glob(f, mp) for f in changed_files for mp in match_paths):
+            picked.extend(gdef.get("commands", []) or [])
+            used.append(gname)
+
+    if not picked:
+        # Fallback to default group.
+        default = groups.get("default") or {}
+        picked = list(default.get("commands", []) or [])
+        if picked:
+            used.append("default")
+
+    return picked, used
+
+
+def run_smoke_tests(cmds: list[str], cwd: Path) -> list[dict]:
+    """Run each command, return list of {cmd, exit_code, stdout, stderr, ok}."""
+    results: list[dict] = []
+    for cmd in cmds:
+        try:
+            proc = subprocess.run(
+                cmd, shell=True, cwd=str(cwd),
+                capture_output=True, text=True, timeout=60,
+            )
+            results.append({
+                "cmd": cmd,
+                "exit_code": proc.returncode,
+                "stdout": proc.stdout[-2000:],  # last 2KB
+                "stderr": proc.stderr[-2000:],
+                "ok": proc.returncode == 0,
+            })
+        except subprocess.TimeoutExpired:
+            results.append({"cmd": cmd, "exit_code": 124, "ok": False,
+                            "stdout": "", "stderr": "TIMEOUT (60s)"})
+        except Exception as exc:
+            results.append({"cmd": cmd, "exit_code": -1, "ok": False,
+                            "stdout": "", "stderr": str(exc)})
+    return results
+
+
 def parse_review(path: Path) -> dict:
     info = {"exists": path.is_file(), "verdict": None}
     if not info["exists"]:
@@ -299,6 +384,32 @@ def cmd_close(args) -> int:
         print("\nUse --force to write evidence anyway (validation_errors will appear in the journal entry).", file=sys.stderr)
         return 4
 
+    # ---- 3b. Smoke tests (Phase 2.2 Finding #4 fix) ---------------------
+    smoke_cmds, smoke_groups = select_smoke_commands(
+        changed_files=summary_info["changed_files"],
+        group=getattr(args, "smoke_group", None),
+        explicit=getattr(args, "smoke_test", None) or None,
+    )
+    smoke_results: list[dict] = []
+    smoke_skipped = getattr(args, "skip_smoke", False)
+    if smoke_cmds and not smoke_skipped:
+        cwd_for_smoke = wt_path if (wt_path and wt_path.exists()) else ROOT
+        smoke_results = run_smoke_tests(smoke_cmds, cwd_for_smoke)
+        failed = [r for r in smoke_results if not r["ok"]]
+        if failed and not args.force:
+            print("Smoke-test gate FAILED:", file=sys.stderr)
+            for r in failed:
+                print(f"  ✗ exit={r['exit_code']}  {r['cmd']}", file=sys.stderr)
+                if r["stderr"]:
+                    for line in r["stderr"].strip().splitlines()[:5]:
+                        print(f"      {line}", file=sys.stderr)
+            print(
+                f"\nGroups: {smoke_groups}. Pass --skip-smoke to skip "
+                f"(record-only), --force to ignore.",
+                file=sys.stderr,
+            )
+            return 5
+
     # ---- 4. Journal entry ------------------------------------------------
     seq = next_journal_seq()
     entry_name = f"{today()}-{seq:03d}-{wp_id}"
@@ -327,6 +438,9 @@ def cmd_close(args) -> int:
         "has_delta": has_delta,
         "has_blockers": has_blockers,
         "validation_errors": validation_errors,
+        "smoke_groups": smoke_groups,
+        "smoke_pass": all(r["ok"] for r in smoke_results) if smoke_results else None,
+        "smoke_skipped": smoke_skipped,
         "closed_at": now(),
     }
 
@@ -394,6 +508,9 @@ def cmd_close(args) -> int:
                 "has_delta": has_delta,
                 "has_blockers": has_blockers,
                 "validation_errors": validation_errors,
+                "smoke_groups": smoke_groups,
+                "smoke_results": smoke_results,
+                "smoke_skipped": smoke_skipped,
                 "journal_entry": entry_name,
                 "closed_at": now(),
             },
@@ -441,6 +558,12 @@ def cmd_close(args) -> int:
         print(f"  WARN:     {len(validation_errors)} validation issue(s) recorded.")
     if review_info["verdict"]:
         print(f"  review:   {review_info['verdict']}")
+    if smoke_results:
+        passed = sum(1 for r in smoke_results if r["ok"])
+        print(f"  smoke:    {passed}/{len(smoke_results)} passed "
+              f"(groups: {','.join(smoke_groups)})")
+    elif smoke_skipped:
+        print(f"  smoke:    SKIPPED (--skip-smoke)")
     print("\nNext step: review the journal entry, then run "
           "`tcad_worktree.py merge <slug>` (with preconditions enforced).")
     return 0
@@ -515,7 +638,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("slug",
                    help="Worktree slug (WP-NNN-name-role) or bare WP id.")
     s.add_argument("--force", action="store_true",
-                   help="Overwrite existing patch and ignore validation errors.")
+                   help="Overwrite existing patch and ignore validation/smoke errors.")
+    s.add_argument("--smoke-test", action="append", default=None,
+                   metavar="CMD",
+                   help="Explicit smoke-test shell command (repeatable). Skips YAML.")
+    s.add_argument("--smoke-group", default=None,
+                   help="Run a specific group from smoke_tests.yaml (e.g. python_scripts).")
+    s.add_argument("--skip-smoke", action="store_true",
+                   help="Record close without running smoke tests.")
     s.set_defaults(func=cmd_close)
 
     s = sub.add_parser("validate", help="Validate WP evidence (read-only).")

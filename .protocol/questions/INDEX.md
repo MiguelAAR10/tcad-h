@@ -83,3 +83,26 @@ Should /health include version field?
 2. Change `Status:` to `🔵 answered`.
 3. Notify the Conductor (or wait for the next `tcad_conduct.py status` poll).
 4. Conductor applies the resolution and changes `Status:` to `✅ resolved`, then moves the block to `ANSWERED.md`.
+
+## Q-MC-WP-002-fix6-b-frontend — Merge conflict on wp/WP-002-fix6-b-frontend
+
+**Status**: 🟡 pending
+**Raised by**: worktree merge
+**WP**: WP-002-fix6-b
+**Blocks**: merge
+
+**Evidence**:
+```
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint: 
+hint: 	git merge --no-ff
+hint: 
+hint: or:
+hint: 
+hint: 	git rebase
+hint: 
+hint: Disable this message with "git config advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+```
+
+**Question**: base 'master' advanced after this worktree was created. Choose: rebase, no-ff merge, or split into contract WP.

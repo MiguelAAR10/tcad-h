@@ -261,6 +261,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     files_to_make = files_for_mode(args.lean, args.role)
+    profile = "lean" if args.lean else "verbose"
     template_errors = validate_template(files_to_make)
     if template_errors:
         for err in template_errors:
@@ -320,7 +321,22 @@ def main(argv: list[str]) -> int:
         print("\nDry run complete. No files were created.")
         return 0
 
+    # Phase 2.2 Finding #1 fix: write profile metadata so tcad_conduct.py
+    # validates the right file set.
+    metadata = {
+        "wp_id": wp_id_full,
+        "profile": profile,
+        "role": args.role,
+        "required_files": files_to_make,
+        "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "schema_version": 1,
+    }
+    (wp_dir / ".tcad_wp.json").write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
+
     print(f"\nGenerated {len(files_to_make)} files under {wp_dir.relative_to(ROOT)}/")
+    print(f"  profile: {profile}")
 
     gen_errors = validate_generated(wp_dir, files_to_make)
     if gen_errors:

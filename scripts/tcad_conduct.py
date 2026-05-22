@@ -193,7 +193,22 @@ def resolve_wp_dir(wp_id: str) -> Path | None:
 
 
 def wp_required_files(wp_dir: Path) -> dict[str, bool]:
-    """Return file -> exists for the standard WP files."""
+    """Return file -> exists for the WP's required files.
+
+    Phase 2.2 Finding #1 fix: read .tcad_wp.json metadata to pick the right
+    file set. Lean WPs require 5 files, verbose WPs require 12.
+    Falls back to verbose list for legacy WPs without metadata.
+    """
+    meta_path = wp_dir / ".tcad_wp.json"
+    if meta_path.is_file():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            required = meta.get("required_files") or []
+            if required:
+                return {f: (wp_dir / f).is_file() for f in required}
+        except (json.JSONDecodeError, OSError):
+            pass
+    # Legacy fallback: verbose 12 files.
     files = [
         "00_context.md", "01_goal.md", "02_allowed_files.md",
         "03_forbidden_files.md", "04_existing_decisions.md",

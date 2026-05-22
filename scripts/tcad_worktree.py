@@ -289,6 +289,66 @@ def cmd_inspect(args) -> int:
     return 0
 
 
+def emit_conflict_artifacts(*, wt: dict, branch: str, base: str, stderr: str, kind: str) -> None:
+    """Phase 2.2 Finding #6 fix: structured artifacts on merge failure.
+
+    Emits:
+      - merge_conflict_detected event in events.jsonl
+      - open question in .protocol/questions/INDEX.md (mirrors status.json open_questions)
+    Idempotent on question id by content hash of (branch, base, kind).
+    """
+    wp_id = wt.get("wp")
+    role = wt.get("role")
+    slug = f"{wp_id}-{role}" if wp_id and role else "unknown"
+
+    # 1. Event log
+    append_event({
+        "ts": now(), "actor": "worktree", "event": "merge_conflict_detected",
+        "wp": wp_id, "role": role, "branch": branch, "base": base,
+        "kind": kind, "stderr_excerpt": stderr[:500],
+    })
+
+    # 2. Open question (in status.json + INDEX.md)
+    state = load_status()
+    qs = state.setdefault("open_questions", [])
+    qid = f"Q-MC-{slug}"
+    # Idempotent: drop existing entries for same slug+kind before adding.
+    qs[:] = [q for q in qs if q.get("id") != qid]
+    qs.append({
+        "id": qid,
+        "title": f"Merge conflict: cannot fast-forward {branch} onto {base}",
+        "blocks": "merge",
+        "wp": wp_id,
+        "kind": kind,
+        "raised_at": now(),
+        "raised_by": "worktree",
+        "status": "pending",
+        "evidence": stderr[:500],
+    })
+    save_status(state)
+
+    # 3. Mirror to INDEX.md (best-effort; if file missing, skip)
+    qidx = PROTOCOL_DIR / "questions" / "INDEX.md"
+    if qidx.parent.is_dir():
+        try:
+            qidx.parent.mkdir(parents=True, exist_ok=True)
+            existing = qidx.read_text(encoding="utf-8") if qidx.exists() else "# Open Questions\n\n"
+            if f"## {qid}" not in existing:
+                block = (
+                    f"\n## {qid} — Merge conflict on {branch}\n\n"
+                    f"**Status**: 🟡 pending\n"
+                    f"**Raised by**: worktree merge\n"
+                    f"**WP**: {wp_id}\n"
+                    f"**Blocks**: merge\n\n"
+                    f"**Evidence**:\n```\n{stderr[:500]}\n```\n\n"
+                    f"**Question**: base {base!r} advanced after this worktree was created. "
+                    f"Choose: rebase, no-ff merge, or split into contract WP.\n"
+                )
+                qidx.write_text(existing.rstrip() + "\n" + block, encoding="utf-8")
+        except OSError:
+            pass
+
+
 def check_merge_preconditions(wp_dir: Path | None, wt_path: Path, args) -> list[str]:
     """Audit fix #3 (mentor): merge preconditions — summary + blockers + boundary."""
     errors: list[str] = []
@@ -348,7 +408,32 @@ def cmd_merge(args) -> int:
         else:
             git("merge", "--ff-only", branch)
     except subprocess.CalledProcessError as exc:
-        print(f"git merge failed: {exc.stderr}", file=sys.stderr)
+        # Phase 2.2 Finding #6 fix: structured conflict UX.
+        stderr = (exc.stderr or "").strip()
+        is_ff_failure = "fast-forward" in stderr.lower() or "non-fast-forward" in stderr.lower()
+        emit_conflict_artifacts(
+            wt=wt, branch=branch, base=base, stderr=stderr,
+            kind="ff_only_refused" if is_ff_failure else "merge_failed",
+        )
+        print(f"\nMerge refused.", file=sys.stderr)
+        if is_ff_failure:
+            print(
+                f"  reason:    base branch {base!r} advanced since worktree was created.\n"
+                f"  branch:    {branch}\n"
+                f"  evidence:  raw git error captured to event log.\n"
+                f"  next:      open question recorded in .protocol/questions/INDEX.md.\n"
+                f"\nSuggested actions:\n"
+                f"  A) rebase worktree onto new base:\n"
+                f"       cd .protocol/worktrees/{args.slug}\n"
+                f"       git rebase {base}\n"
+                f"     then re-run merge.\n"
+                f"  B) merge with --no-ff to accept a merge commit:\n"
+                f"       python3 scripts/tcad_worktree.py merge {args.slug} --no-ff\n"
+                f"  C) treat the divergence as a contract change, file follow-up WP.\n",
+                file=sys.stderr,
+            )
+        else:
+            print(f"  raw git: {stderr}", file=sys.stderr)
         return 2
 
     append_event({
