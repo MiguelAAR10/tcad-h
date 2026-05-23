@@ -17,7 +17,9 @@ tcad quickstart
 
 ## 🧭 Quick nav
 
-[Why](#-why-this-exists) · [How it works](#-how-it-works) · [Models](#-pick-any-model-per-role) · [Install](#-install) · [First WP](#-five-minute-first-wp) · [Iron rules](#-iron-rules) · [Phases](#-where-we-are) · [Trial](#-the-field-trial) · [CLI](./docs/CLI.md) · [Concepts](./docs/CONCEPTS.md) · [Quickstart](./docs/QUICKSTART.md)
+[Why](#-why-this-exists) · [How it works](#-how-it-works) · [Models](#-pick-any-model-per-role) · [Install](#-install) · [First WP](#-five-minute-first-wp) · [Iron rules](#-iron-rules) · [Phases](#-where-we-are) · [Trial](#-the-field-trial)
+
+**Deeper docs:** [Protocol spec](./docs/PROTOCOL.md) · [Quickstart](./docs/QUICKSTART.md) · [Concepts](./docs/CONCEPTS.md) · [CLI](./docs/CLI.md) · [Release notes](./docs/RELEASE.md) · [Trials](./docs/trials/README.md)
 
 ---
 
@@ -218,7 +220,7 @@ Five rules. Non-negotiable. Enforced by code, not by good behavior.
 | 4 | 🚧 Open blocking questions halt progress. | FSM guards reject transitions while questions are pending. |
 | 5 | 📏 No edit outside the WP's `02_allowed_files.md`. | `tcad boundaries check` exits non-zero. |
 
-Full spec: [`PROTOCOL.md`](./PROTOCOL.md).
+Full spec: [`docs/PROTOCOL.md`](./docs/PROTOCOL.md).
 
 ---
 
@@ -290,7 +292,7 @@ flowchart LR
 
 **🔥 Phase 2.3** = real external trial that caught a duplicate-route bug TCAD-H now blocks deterministically.
 **📦 Phase 3.4** = alpha packaging — `install.sh`, `tcad` CLI, `tcad doctor`, docs.
-**🟡 Phase 3.5** = field trial in progress. No new features ship until [`DECISION_REPORT.md`](./DECISION_REPORT.md) lands.
+**🟡 Phase 3.5** = field trial in progress. No new features ship until [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) lands.
 
 Full per-phase ledger: [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -302,7 +304,7 @@ Mentor verdict after alpha:
 
 > *"TCAD-H ya tiene motor y llave. Ahora falta manejarlo una semana en carretera real."*
 
-Until [`DECISION_REPORT.md`](./DECISION_REPORT.md) is written, the answer to *"should we build X?"* is **"use it first."**
+Until [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) is written, the answer to *"should we build X?"* is **"use it first."**
 
 The trial answers:
 
@@ -312,21 +314,25 @@ The trial answers:
 4. Where did it generate ritual without value?
 5. What is missing for daily use?
 
-Scaffolding lives in [`FIELD_TRIAL_PLAN.md`](./FIELD_TRIAL_PLAN.md), [`FIELD_TRIAL.md`](./FIELD_TRIAL.md), [`FRICTION_REGISTER.md`](./FRICTION_REGISTER.md).
+Scaffolding lives in [`docs/trials/`](./docs/trials/README.md) (plan, log, friction register, decision report).
 
 ---
 
-## 📂 Project layout (top level)
+## 📂 Project layout
 
 ```
 🏗️  tcad-h/
-├── 📘  PROTOCOL.md · AGENTS.md · CLAUDE.md · OPENCODE.md
-├── 📦  install.sh · bin/tcad
-├── 🐍  scripts/         15 Python tools, stdlib only
-├── 📺  studio/          localhost dashboard
-├── 📚  docs/            QUICKSTART · CONCEPTS · CLI
-├── 🧪  FIELD_TRIAL*.md  trial scaffolding
-└── ⚙️  .protocol/       runtime artifacts (handoffs, journal, atlas, etc.)
+├── 📄  README.md · LICENSE · CHANGELOG.md · VERSION.md
+├── 🤝  AGENTS.md · CLAUDE.md · OPENCODE.md    autodiscovery for agent CLIs
+├── 📦  install.sh                              local installer
+├── 🐍  bin/tcad                                single CLI dispatcher
+├── 🛠️  scripts/                                15 Python tools (stdlib only)
+├── 📺  studio/                                 localhost dashboard
+├── 📚  docs/
+│   ├── PROTOCOL.md · RELEASE.md · QUICKSTART.md · CONCEPTS.md · CLI.md
+│   └── 🧪  trials/                             every formal trial
+├── ⚙️  .protocol/                              runtime state (handoffs, journal, atlas)
+└── 📦  legacy/                                 v1 markdown (pre-protocol)
 ```
 
 Detailed tree + per-file purpose: [`docs/CONCEPTS.md`](./docs/CONCEPTS.md).
@@ -337,11 +343,11 @@ Detailed tree + per-file purpose: [`docs/CONCEPTS.md`](./docs/CONCEPTS.md).
 
 While the framework is in alpha, contributions are limited to:
 
-1. **Frictions** — open an issue or append to [`FRICTION_REGISTER.md`](./FRICTION_REGISTER.md) after using TCAD-H on a real WP.
+1. **Frictions** — open an issue or append to [`docs/trials/FRICTION_REGISTER.md`](./docs/trials/FRICTION_REGISTER.md) after using TCAD-H on a real WP.
 2. **Reviewer-detector ideas** — propose a new deterministic check (Flask route detector, NestJS controller dupe, etc.) with the failure case you saw.
 3. **Smoke-group recipes** — share `smoke_tests.yaml` patterns for your stack.
 
-No code PRs accepted until the field trial closes and [`DECISION_REPORT.md`](./DECISION_REPORT.md) declares *Keep*.
+No code PRs accepted until the field trial closes and [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) declares *Keep*.
 
 ---
 
