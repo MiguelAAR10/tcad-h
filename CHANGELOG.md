@@ -1,7 +1,37 @@
 # Changelog
 
-All notable changes to TCAD-H, by phase. Dates reflect when each phase landed,
-not calendar time.
+All notable changes to Foreman (originally TCAD-H), by phase.
+
+## [unreleased] — Phase 3.5+ Rename + Staff-Engineer Feedback Fixes
+
+### Renamed
+- Project: **TCAD-H → Foreman** ("Site supervisor for AI coding crews").
+- Primary CLI: `tcad` → `foreman` (the `tcad` command remains as a deprecated alias until v0.3).
+- Env vars: `TCAD_HOME` / `TCAD_ROOT` → `FOREMAN_HOME` / `FOREMAN_ROOT`
+  (legacy vars still honored as fallback).
+- Internal script filenames keep `tcad_*.py` for one more release to avoid
+  breaking everyone's symlinks; v0.2 plans to rename.
+
+### Added
+- `bin/foreman` primary entrypoint + `bin/tcad` deprecation shim.
+- `foreman wp express`: one-shot init + create + FSM + worktree.
+  Cuts the "5-minute" flow from ~10 commands to 1. Drops the user into
+  `$EDITOR` for the scope files (or accepts `--allowed` / `--forbidden`
+  globs directly to skip).
+- `scripts/_tcad_yaml.py`: single shared YAML parser. Removes the
+  duplicated TinyYAML class from `tcad_check_boundaries.py` and
+  `studio/server.py`.
+
+### Documentation
+- README rewritten with explicit **auth model section**: Foreman does NOT
+  manage API tokens. Workers authenticate via their own CLI subscriptions.
+  All references to "tokens" reframed as throughput + auditability.
+- "Honest scope" section added listing what Foreman does NOT do
+  (Staff-Engineer feedback: cross-file dup detection, Flask/Django
+  detectors, auto-orchestration of CLI workers, PyPI packaging — all
+  explicit non-goals for v0.1).
+- Iron rule #1 reframed from "guarantee" to "policy" with honest
+  enforcement strength column.
 
 ## [0.1.0-alpha] — Phase 3.4 Alpha Packaging
 

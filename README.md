@@ -1,44 +1,46 @@
-# 🏗️ TCAD-H
+# 🏗️ Foreman
 
-> **Deterministic harness for multi-agent coding.**
-> Coordinate Claude Code, OpenCode, Kimi, Qwen, DeepSeek, GPT, Minimax — without losing context, scope, or your mind.
+> **Site supervisor for AI coding crews.**
+> Run Claude Code, OpenCode, Kimi, Qwen, DeepSeek, GPT, Codex side-by-side without collisions, duplicates, or context loss. Filesystem is the source of truth. No API keys required.
 
-![status](https://img.shields.io/badge/status-alpha-yellow) ![version](https://img.shields.io/badge/version-0.1.0--alpha-blue) ![python](https://img.shields.io/badge/python-3.10%2B-green) ![llm--in--core](https://img.shields.io/badge/LLM%20in%20core-zero-success)
+![status](https://img.shields.io/badge/status-alpha-yellow) ![version](https://img.shields.io/badge/version-0.1.0--alpha-blue) ![python](https://img.shields.io/badge/python-3.10%2B-green) ![llm--in--core](https://img.shields.io/badge/LLM%20in%20core-zero-success) ![auth](https://img.shields.io/badge/auth-CLI%20subscription-blueviolet)
 
 > ⚠️ **Alpha software.** Pre-1.0. Expect breaking changes between commits.
+> Originally named **TCAD-H**; renamed to **Foreman** in v0.2 (the `tcad` command remains as a deprecated alias until v0.3).
 
 ```bash
-git clone https://github.com/MiguelAAR10/tcad-h.git ~/.tcad-h
-cd ~/.tcad-h && ./install.sh
-tcad quickstart
+git clone https://github.com/MiguelAAR10/foreman.git ~/.foreman
+cd ~/.foreman && ./install.sh
+foreman wp express --name "first-feature" --goal "Add /health endpoint" --role backend
 ```
 
 ---
 
 ## 🧭 Quick nav
 
-[Why](#-why-this-exists) · [How it works](#-how-it-works) · [Models](#-pick-any-model-per-role) · [Install](#-install) · [First WP](#-five-minute-first-wp) · [Iron rules](#-iron-rules) · [Phases](#-where-we-are) · [Trial](#-the-field-trial)
+[Why](#-why-this-exists) · [How it works](#-how-it-works) · [Auth model](#-auth-model-no-api-keys) · [Models](#-pick-any-model-per-role) · [Install](#-install) · [Express WP](#-30-second-express-wp) · [Manual WP](#%EF%B8%8F-manual-wp-when-express-is-too-fast) · [Iron rules](#%EF%B8%8F-iron-rules-and-what-they-actually-guarantee) · [Honest scope](#-honest-scope--what-foreman-does-not-do) · [Trial](#-the-field-trial)
 
-**Deeper docs:** [Protocol spec](./docs/PROTOCOL.md) · [Quickstart](./docs/QUICKSTART.md) · [Concepts](./docs/CONCEPTS.md) · [CLI](./docs/CLI.md) · [Release notes](./docs/RELEASE.md) · [Trials](./docs/trials/README.md)
+**Deeper docs:** [Protocol](./docs/PROTOCOL.md) · [Quickstart](./docs/QUICKSTART.md) · [Concepts](./docs/CONCEPTS.md) · [CLI](./docs/CLI.md) · [Release](./docs/RELEASE.md) · [Trials](./docs/trials/README.md)
 
 ---
 
 ## 💡 Why this exists
 
-Working with one coding agent is hard. Working with five in parallel breaks down on its own:
+Working with one coding agent is hard. Working with several in parallel breaks down on its own:
 
 | Pain | Concrete failure |
 |---|---|
-| 🧠 **Context rot** | Agents hand each other 60K-token chat histories. Signal collapses. |
+| 🧠 **Context rot** | Agents hand each other 60K-token chat histories. Signal collapses. Prompt cache misses every turn. |
 | 🎯 **Scope creep** | Agents proactively "fix" things outside the task. |
 | 🪞 **Silent duplication** | Agent adds `def health()` even when one already exists six lines above. *(Real case caught in our Phase 2.3 trial.)* |
 | 💥 **Race conditions** | Two terminals editing the same tree → ghost diffs, broken merges. |
-| 🌊 **Diff overwhelm** | 500-line patch tells you nothing about which capability of the product just changed. |
+| 🌊 **Diff overwhelm** | 500-line patch tells you nothing about which capability of the product changed. |
 
-TCAD-H fixes each one with a **deterministic mechanism**, not a prompt.
+Foreman fixes each one with a **deterministic mechanism**, not a prompt.
 
-> 🚫 **No model receives conversation history.**
+> 🚫 **No model receives conversation history** (enforced via worker prompt + boundary firewall).
 > ✅ **Every model receives versioned files on disk.**
+> 🔑 **No API keys required**: workers run via their own CLI subscriptions.
 
 ---
 
@@ -46,18 +48,16 @@ TCAD-H fixes each one with a **deterministic mechanism**, not a prompt.
 
 ```mermaid
 flowchart TB
-    H([🧑 Human intent]) --> C[🎼 Conductor<br/>any planning-grade model]
+    H([🧑 Human intent]) --> C[🎼 Conductor<br/>any planning-grade CLI]
     C --> WP[📦 Work Package<br/>versioned artifacts]
-    WP --> W[👷 Worker<br/>any execution model]
+    WP --> W[👷 Worker<br/>any execution-grade CLI]
     W --> WT[(🌳 Isolated worktree<br/>own git branch)]
     WT --> E{⚖️ Gates}
     E -->|❌ fail| Q[❓ Open question]
     E -->|✅ pass| G[🗺️ Per-WP graph<br/>code_graph.json + mermaid]
     G --> A[📊 Cross-WP atlas<br/>heatmap · hotspots · timeline]
     A --> S[📺 Studio<br/>localhost:8765]
-
     Q -.blocks.-> WT
-
     style C fill:#3b82f6,color:#fff
     style W fill:#10b981,color:#fff
     style E fill:#f59e0b,color:#fff
@@ -67,16 +67,15 @@ flowchart TB
 
 **Every box is Python + git + JSON.** Zero LLM in the core pipeline. The LLM lives in the workers — never in the gates.
 
-### What each gate catches
+### What each gate actually catches
 
 ```mermaid
 flowchart LR
-    P[patch] --> B[🚧 Boundary firewall<br/>path-level]
-    B --> SM[🧪 Smoke gate<br/>shell commands]
-    SM --> R[🛡️ Reviewer gate<br/>duplicate routes / symbols]
+    P[patch] --> B[🚧 Boundary firewall<br/>path-level<br/>git diff --name-only]
+    B --> SM[🧪 Smoke gate<br/>shell commands you define]
+    SM --> R[🛡️ Reviewer gate<br/>dup routes / symbols<br/>FastAPI · Express · Python]
     R --> M[🔀 Merge preconditions<br/>summary + blockers + ff-only]
     M --> ✓
-
     style B fill:#ef4444,color:#fff
     style SM fill:#f59e0b,color:#fff
     style R fill:#3b82f6,color:#fff
@@ -85,181 +84,224 @@ flowchart LR
 
 ---
 
+## 🔑 Auth model: no API keys
+
+**Foreman does NOT manage API tokens.** This is intentional.
+
+| Layer | Who authenticates | How |
+|---|---|---|
+| **Foreman itself** | nobody | Just Python + git. Reads/writes local files. |
+| **Conductor CLI** (Claude Code, Codex CLI, GPT-CLI…) | You, via the CLI's own subscription/login | `claude login`, `codex login`, etc. |
+| **Worker CLI** (OpenCode, Kimi, Qwen, DeepSeek…) | You, via each CLI's own auth | `opencode auth`, `kimi login`, etc. |
+| **Studio / Atlas / Doctor** | nobody | localhost only, no network. |
+
+Foreman's job is **filesystem orchestration**, not API brokerage. When the worker needs to run, you launch its CLI in a separate terminal pointing at the WP folder. The CLI handles its own subscription billing.
+
+**Why this matters:**
+- No `.env` for API keys. No leaked secrets.
+- Works with subscription tiers (you already pay $20/mo to Claude, not per-token).
+- Switching providers is a CLI swap, not a code change.
+- LATAM-friendly: you can mix Anthropic + Chinese self-hosted models without sending code to a single US provider.
+
+---
+
 ## 🎚️ Pick any model per role
 
-**Conductor is whatever model you have credits for.** TCAD-H does NOT lock you into Claude. Swap based on availability, token budget, and task complexity.
+**Conductor is whatever CLI subscription you have.** Foreman does NOT lock you into Claude. Swap based on plan availability + task complexity.
 
-| Role | Default suggestion | Cheap fallback | Why this role exists |
+| Role | Premium choice | Cheap choice | What this role does |
 |---|---|---|---|
-| 🎼 **Conductor** | Claude Sonnet/Opus | GPT-5 · Kimi K2 | Drives FSM. Plans. Generates Work Packages. Never writes code. |
-| 👷 **Backend worker** | Kimi · GPT | Qwen-Coder · DeepSeek | Reads WP, edits backend, writes summary. |
-| 🎨 **Frontend worker** | Qwen-Coder · GPT | DeepSeek · Minimax | UI components, layouts. |
-| 🧪 **Tests / Docs worker** | Minimax · DeepSeek | local Llama | Cheap repetitive work. |
-| 🛡️ **Reviewer** | *different model than worker* | any other | Reads diff + report. Verdict PASS/FAIL. |
-| 👀 **Watcher** | none (`tcad scan`) | — | Pure Python. Zero LLM. |
+| 🎼 **Conductor** | Claude Code (Sonnet/Opus) | Codex CLI · Kimi CLI | Drives FSM. Plans. Generates Work Packages. Never writes code. |
+| 👷 **Backend worker** | OpenCode + GPT-5 | OpenCode + Kimi K2 / Qwen-Coder | Reads WP, edits backend, writes summary. |
+| 🎨 **Frontend worker** | Cursor / Claude Code | OpenCode + Qwen-Coder / DeepSeek | UI components, layouts. |
+| 🧪 **Tests / Docs worker** | OpenCode + Claude Haiku | OpenCode + Minimax / DeepSeek | Cheap repetitive work. |
+| 🛡️ **Reviewer** | Any CLI *different from worker* | local llama via OpenCode | Reads diff + report. Verdict PASS/FAIL. |
+| 👀 **Watcher** | none — `foreman scan loop` | — | Pure Python. Zero LLM. Zero auth. |
 
-> ⚖️ **Token budget rule.** If a role is bottlenecked on cost, drop to a cheaper model. The protocol stays the same — only the model name changes.
+> ⚖️ **Subscription budget rule.** If your Claude plan is throttling, drop the worker role to OpenCode + Kimi. The protocol stays the same. Only the CLI in the worker terminal changes.
 
-Swap mid-project with `.protocol/terminals.yaml`. Example:
+Swap mid-project via `.protocol/terminals.yaml`:
 
 ```yaml
 terminals:
   - id: T1
     role: conductor
-    tool: claude-code        # or codex-cli, opencode, kimi-cli...
-    model_family: claude     # swap to gpt / kimi / qwen when needed
+    tool: claude-code            # or codex-cli, opencode, kimi-cli...
+    model_family: claude
+    auth: subscription           # CLI's own login. Foreman doesn't touch it.
   - id: T2
     role: backend-worker
     tool: opencode
     model_family: kimi
     fallback_models: [gpt, claude-haiku, qwen-coder]
+    auth: subscription
 ```
 
-The FSM, gates, graph, atlas — **all model-agnostic by design.**
+FSM, gates, graph, atlas — **all model-agnostic + auth-agnostic by design.**
 
 ---
 
 ## ⚙️ Install
 
 ```bash
-git clone https://github.com/MiguelAAR10/tcad-h.git ~/.tcad-h
-cd ~/.tcad-h
+git clone https://github.com/MiguelAAR10/foreman.git ~/.foreman
+cd ~/.foreman
 ./install.sh
 
 # Ensure PATH (one-time, add to shell rc)
 export PATH="$HOME/.local/bin:$PATH"
 
 # Verify
-tcad --version       # 0.1.0-alpha
-tcad doctor          # health check
+foreman --version       # 0.1.0-alpha
+foreman doctor          # health check
 ```
 
-No sudo. No `pip install`. No PyPI dependency. The installer symlinks `tcad` into `~/.local/bin` (override with `TCAD_INSTALL_DIR`).
+No sudo. No `pip install`. No PyPI dependency. The installer symlinks both
+`foreman` (primary) and `tcad` (deprecated alias) into `~/.local/bin`. Override
+with `FOREMAN_INSTALL_DIR` (or legacy `TCAD_INSTALL_DIR`).
 
 ---
 
-## 🚀 Five-minute first WP
+## ⚡ 30-second express WP
+
+For low-risk Work Packages (single file, well-defined change), use express mode:
+
+```bash
+cd /path/to/your/project
+
+foreman wp express \
+    --name "add-health" \
+    --goal "Add /health endpoint" \
+    --role backend
+```
+
+What happens automatically:
+
+1. ✅ `.protocol/` bootstrapped if missing
+2. ✅ Conductor state initialized if missing
+3. ✅ Project profile detected if missing
+4. ✅ Lean WP created (5 files)
+5. ✅ Editor opens for `02_allowed_files.md` + `03_forbidden_files.md`
+6. ✅ Conductor advances to `WORKER_BRIEF`
+7. ✅ Isolated git worktree created
+
+Then a one-line hand-off:
+
+```
+======================================================================
+  WP-001-add-health is READY for the worker.
+======================================================================
+  Open a new terminal in:
+      cd .protocol/worktrees/WP-001-add-health-backend
+  Launch your worker CLI (auth via its OWN login — Foreman does NOT
+  manage API keys):
+      opencode    # or claude-code, kimi-cli, codex-cli...
+  Read the worker prompt:
+      .protocol/handoffs/WP-001-add-health/05_worker_prompt_backend.md
+
+  When the worker finishes (writes 11_worker_summary.md):
+      foreman close WP-001-add-health-backend --smoke-test "pytest -q"
+      foreman graph build WP-001-add-health
+      foreman worktree merge WP-001-add-health-backend
+      foreman worktree destroy WP-001-add-health-backend
+      foreman atlas build
+======================================================================
+```
+
+Skip the editor with `--allowed "src/**" --forbidden ".env*"`.
+
+---
+
+## 🛠️ Manual WP (when express is too fast)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor 👤 as Human
     participant 🎼 as Conductor
-    participant 📦 as Work Package
+    participant 📦 as WP
     participant 🌳 as Worktree
     participant 👷 as Worker
     participant ⚖️ as Gates
     participant 📺 as Studio
 
-    👤->>🎼: tcad wp create --lean ...
-    🎼->>📦: 5 files written
-    👤->>🎼: tcad conduct transition WORKER_BRIEF
-    🎼->>🌳: tcad worktree create
-    🌳->>👷: branch + working tree ready
+    👤->>🎼: foreman wp create --lean
+    🎼->>📦: 5 files
+    👤->>🎼: conduct transitions → WORKER_BRIEF
+    🎼->>🌳: worktree create
+    🌳->>👷: branch ready
     👤->>👷: hand off 05_worker_prompt
+    Note over 👷: Worker uses ITS OWN CLI auth.<br/>Foreman never touches it.
     👷->>📦: 11_worker_summary.md
-    👤->>⚖️: tcad close
+    👤->>⚖️: foreman close
     ⚖️->>⚖️: smoke + reviewer + boundary
     ⚖️-->>📦: 15_diff.patch + close_report
-    👤->>🌳: tcad worktree merge
-    👤->>📺: tcad studio
+    👤->>🌳: worktree merge
+    👤->>📺: foreman studio
     📺-->>👤: graph + atlas + findings
 ```
 
-Commands in order:
-
-```bash
-cd /path/to/your/project
-tcad init                                                   # 1
-tcad profile detect                                         # 2
-tcad doctor                                                 # 3
-
-tcad wp create --lean --name "add-health" \
-  --goal "Add /health endpoint" --role backend              # 4
-
-# Fill 02_allowed_files.md and 03_forbidden_files.md
-
-tcad conduct init                                           # 5
-tcad wp set WP-001-add-health
-tcad conduct transition INTAKE
-tcad conduct transition SPEC_DRAFT
-tcad conduct transition HANDOFF_GEN
-tcad conduct transition WORKER_BRIEF
-
-tcad worktree create WP-001-add-health --role backend       # 6
-
-# Hand the worker prompt to your CLI of choice:
-#   opencode --read .protocol/handoffs/WP-001-add-health/05_worker_prompt_backend.md
-#   kimi run ...
-#   codex run ...
-
-tcad close WP-001-add-health-backend \
-  --smoke-test "pytest -q"                                  # 7
-
-tcad graph build WP-001-add-health                          # 8
-tcad worktree merge WP-001-add-health-backend
-tcad worktree destroy WP-001-add-health-backend
-tcad atlas build                                            # 9
-tcad studio       # → http://127.0.0.1:8765                 # 10
-```
-
-Run `tcad quickstart` to see this same list at any time.
+Run `foreman quickstart` to see the manual command list anytime.
 Full walkthrough: [`docs/QUICKSTART.md`](./docs/QUICKSTART.md).
 
 ---
 
-## ⚔️ Iron rules
+## ⚔️ Iron rules and what they actually guarantee
 
-Five rules. Non-negotiable. Enforced by code, not by good behavior.
+Five rules. Some are enforced structurally. Some are **policies** that the boundary firewall + reviewer gate make hard to violate but not impossible. Honest framing:
 
-| # | Rule | Enforced by |
+| # | Rule | Enforcement strength |
 |---:|---|---|
-| 1 | 🚫 No model receives conversation history. | Worker prompt restricts inputs to WP files. |
-| 2 | 🛑 The Conductor never writes production code. | Conductor scope = `.protocol/` + `specs/`. |
-| 3 | 🔁 The Reviewer is never the Implementer. | Reviewer role check in close pipeline. |
-| 4 | 🚧 Open blocking questions halt progress. | FSM guards reject transitions while questions are pending. |
-| 5 | 📏 No edit outside the WP's `02_allowed_files.md`. | `tcad boundaries check` exits non-zero. |
+| 1 | 🚫 No model receives conversation history. | **Policy.** Worker prompt restricts reads to WP files. Boundary firewall catches writes outside scope. A misbehaving CLI that *reads* extra files for context isn't blocked — best effort, not invariant. |
+| 2 | 🛑 The Conductor never writes production code. | **Structural.** Conductor terminal scope = `.protocol/` + `specs/` only. Boundary firewall enforces. |
+| 3 | 🔁 The Reviewer is never the Implementer. | **Policy.** Encoded in `review_pairing` rules in `terminals.yaml`. Human discipline still required. |
+| 4 | 🚧 Open blocking questions halt progress. | **Structural.** FSM guards reject transitions while questions are pending. |
+| 5 | 📏 No edit outside the WP's `02_allowed_files.md`. | **Structural.** `foreman boundaries check` exits non-zero on hard violation. `--rollback` reverts. |
 
 Full spec: [`docs/PROTOCOL.md`](./docs/PROTOCOL.md).
 
 ---
 
-## ✅ What works today
+## 🪞 Honest scope — what Foreman does NOT do
+
+The Staff-Engineer review of v0.1.0-alpha was sharp and right. Honest limitations:
+
+| Promise people might assume | Reality of v0.1.0 |
+|---|---|
+| "Detects duplicate code" | Only **same-file** duplicate routes (FastAPI/Express) and Python top-level functions/classes. Cross-file duplicates (the common case) are deferred. |
+| "Works with any framework" | Route detection: FastAPI + Express only. Flask/Django/NestJS/Hono = no detector yet. Frontend component dedup = no detector yet. |
+| "1-click install" | `git clone` + `install.sh` + manual `PATH` edit. No PyPI, no Homebrew, no `pipx` yet. |
+| "Auto-orchestration" | Foreman does NOT call the worker CLI for you. You launch it manually in a separate terminal. Foreman supervises the filesystem, not the network. |
+| "Saves you tokens" | Real benefit is **throughput** (multiple workers in parallel) + auditability. Token savings exist (Conductor cheap CLI + workers cheap CLI) but the dollar number is secondary — measured ~60% on small WPs, less on big ones. |
+| "Replaces Claude Code" | No. Foreman *coordinates* Claude Code with other CLIs. Use Claude Code as your Conductor. |
+| "Production-ready" | Alpha. No automated tests for the Python core. Field trial in progress. |
+
+The full deferred list lives in [`docs/RELEASE.md`](./docs/RELEASE.md). What's already working is in the [capability matrix below](#-what-works-today-alpha-ready).
+
+---
+
+## ✅ What works today (alpha-ready)
 
 <details>
-<summary><strong>Capability matrix (alpha-ready)</strong></summary>
+<summary><strong>Capability matrix</strong></summary>
 
 | Capability | Notes |
 |---|---|
 | Lean / verbose Work Packages | 5 vs 12 files |
+| Express WP (init+create+FSM+worktree in 1 cmd) | Staff-Engineer feedback fix |
 | Git worktree isolation per WP+role | full lifecycle |
 | Conductor FSM (17 states, deterministic) | Python only |
-| Path boundary firewall (OS-level) | `tcad boundaries check --rollback` |
+| Path boundary firewall (OS-level) | `foreman boundaries check --rollback` |
 | Smoke-test gate (YAML config) | per-group |
-| Deterministic reviewer gate | FastAPI/Express dupe routes + Python symbols |
+| Deterministic reviewer gate | **same-file** FastAPI/Express dup routes + Python symbols |
 | Evidence capture | patch + journal + close report |
 | Per-WP static graph | code_graph.json + mermaid |
 | Cross-WP atlas | heatmap, hotspots, timeline |
 | Project profile detection | FastAPI / Next / React / Django / monorepo |
 | Studio localhost UI | stdlib HTTP, no build step |
-| `tcad doctor` | 20+ checks + suggestions |
-| `tcad report alpha` | digest + next-action |
-
-</details>
-
-<details>
-<summary><strong>Deferred (not in 0.1.0)</strong></summary>
-
-| Capability | Why deferred |
-|---|---|
-| Cross-file duplicate detection | Out of scope for v0.1 reviewer |
-| Flask / Django / NestJS route detectors | Add when a real WP demands one |
-| Mermaid.js visual render in Studio | Raw markdown for now |
-| LLM-based semantic enrichment | Only after the field trial closes |
-| MCP server | After 0.4 |
-| PyPI package | After field trial signal |
-| Multi-user / team mode | Not in scope |
-| Windows native install | POSIX paths in some scripts |
+| `foreman doctor` | 20+ checks + suggestions |
+| `foreman report alpha` | digest + next-action |
+| CLI subscription auth model | no API keys, ever |
 
 </details>
 
@@ -284,14 +326,13 @@ flowchart LR
     P31 --> P33[3.3<br/>Atlas]
     P33 --> P34[3.4<br/>📦 Alpha pkg]
     P34 --> P35{3.5<br/>Field trial}
-
     style P23 fill:#ef4444,color:#fff
     style P34 fill:#22c55e,color:#fff
     style P35 fill:#facc15,color:#000
 ```
 
-**🔥 Phase 2.3** = real external trial that caught a duplicate-route bug TCAD-H now blocks deterministically.
-**📦 Phase 3.4** = alpha packaging — `install.sh`, `tcad` CLI, `tcad doctor`, docs.
+**🔥 Phase 2.3** = real external trial that caught a duplicate-route bug Foreman now blocks deterministically.
+**📦 Phase 3.4** = alpha packaging — `install.sh`, `foreman` CLI, `foreman doctor`, docs.
 **🟡 Phase 3.5** = field trial in progress. No new features ship until [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) lands.
 
 Full per-phase ledger: [`CHANGELOG.md`](./CHANGELOG.md).
@@ -300,51 +341,55 @@ Full per-phase ledger: [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## 🧪 The field trial
 
-Mentor verdict after alpha:
-
-> *"TCAD-H ya tiene motor y llave. Ahora falta manejarlo una semana en carretera real."*
+> *"Foreman has the engine and the key. Now it needs a week on real roads."*
 
 Until [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) is written, the answer to *"should we build X?"* is **"use it first."**
 
-The trial answers:
+The trial measures (hard numbers, not narrative):
 
-1. Did TCAD-H reduce recontextualization for the human?
-2. Did it reduce review effort on the diff?
-3. Did it catch real semantic problems?
-4. Where did it generate ritual without value?
-5. What is missing for daily use?
+1. **Human time per WP closed** — and the same WP done with just Claude Code alone, as baseline.
+2. **Re-work rate** — FIX_REQUEST cycles per WP.
+3. **Gate catches** — WPs where the reviewer or smoke gate caught something the human would have merged.
+4. **Subscription throughput** — WPs/hour with parallel workers vs serial.
+5. **Friction** — places the human had to leave the protocol.
 
-Scaffolding lives in [`docs/trials/`](./docs/trials/README.md) (plan, log, friction register, decision report).
+Scaffolding: [`docs/trials/`](./docs/trials/README.md).
 
 ---
 
 ## 📂 Project layout
 
 ```
-🏗️  tcad-h/
+🏗️  foreman/
 ├── 📄  README.md · LICENSE · CHANGELOG.md · VERSION.md
 ├── 🤝  AGENTS.md · CLAUDE.md · OPENCODE.md    autodiscovery for agent CLIs
-├── 📦  install.sh                              local installer
-├── 🐍  bin/tcad                                single CLI dispatcher
-├── 🛠️  scripts/                                15 Python tools (stdlib only)
+├── 📦  install.sh                              local installer (foreman + tcad alias)
+├── 🐍  bin/foreman · bin/tcad                  CLI dispatcher (+ deprecated alias)
+├── 🛠️  scripts/                                ~16 Python tools (stdlib only)
+│   ├── _tcad_root.py · _tcad_lock.py · _tcad_yaml.py    shared helpers
+│   ├── tcad_handoff · tcad_conduct · tcad_worktree · tcad_log
+│   ├── tcad_scan · tcad_check_boundaries · tcad_review · tcad_graph
+│   ├── tcad_profile · tcad_atlas · tcad_init · tcad_doctor
+│   ├── tcad_report                             alpha state digest
+│   └── tcad_express                            ⚡ low-friction WP launcher
 ├── 📺  studio/                                 localhost dashboard
 ├── 📚  docs/
-│   ├── PROTOCOL.md · RELEASE.md · QUICKSTART.md · CONCEPTS.md · CLI.md
-│   └── 🧪  trials/                             every formal trial
+│   ├── PROTOCOL · RELEASE · QUICKSTART · CONCEPTS · CLI
+│   └── 🧪 trials/                              formal trial reports
 ├── ⚙️  .protocol/                              runtime state (handoffs, journal, atlas)
 └── 📦  legacy/                                 v1 markdown (pre-protocol)
 ```
 
-Detailed tree + per-file purpose: [`docs/CONCEPTS.md`](./docs/CONCEPTS.md).
+Internal script filenames keep the `tcad_` prefix for v0.1 — v0.2 may rename them. The user-facing CLI is already `foreman`.
 
 ---
 
 ## 🤝 Contributing
 
-While the framework is in alpha, contributions are limited to:
+While Foreman is in alpha, contributions are limited to:
 
-1. **Frictions** — open an issue or append to [`docs/trials/FRICTION_REGISTER.md`](./docs/trials/FRICTION_REGISTER.md) after using TCAD-H on a real WP.
-2. **Reviewer-detector ideas** — propose a new deterministic check (Flask route detector, NestJS controller dupe, etc.) with the failure case you saw.
+1. **Frictions** — append to [`docs/trials/FRICTION_REGISTER.md`](./docs/trials/FRICTION_REGISTER.md) after using Foreman on a real WP.
+2. **Reviewer-detector ideas** — propose a new deterministic check (Flask route detector, NestJS controller dupe, cross-file Python imports) with the failure case you saw.
 3. **Smoke-group recipes** — share `smoke_tests.yaml` patterns for your stack.
 
 No code PRs accepted until the field trial closes and [`docs/trials/DECISION_REPORT.md`](./docs/trials/DECISION_REPORT.md) declares *Keep*.
@@ -356,14 +401,16 @@ No code PRs accepted until the field trial closes and [`docs/trials/DECISION_REP
 | Metric | Value |
 |---|---|
 | Phase | 3.5 field trial (in progress) |
-| LOC (Python core) | ~6,100 |
-| Iron rules holding | 5 / 5 |
+| LOC (Python core) | ~6,400 |
+| Iron rules holding | 5 / 5 (with honest enforcement notes) |
 | LLM calls in core pipeline | 0 |
 | External trial findings | 11 caught · 1 critical fixed |
+| Worker CLIs supported | any (Claude Code, OpenCode, Kimi, Qwen, DeepSeek, Codex, GPT) |
+| API keys required | 0 |
 
 ## 📜 License
 
-License: **MIT** (planned for v1.0). Until then, code is published for evaluation. No redistribution model committed.
+[MIT](./LICENSE) — committed as declaration of intent for v1.0. Until v1.0, the project is published for evaluation. The license is real and applicable; the alpha designation refers to feature stability, not legal status.
 
 ## 👤 Contact
 

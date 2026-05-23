@@ -47,7 +47,8 @@ SCRIPT_PATH = Path(__file__).resolve()
 import sys as _sys
 _sys.path.insert(0, str(SCRIPT_PATH.parent))
 from _tcad_root import resolve_tcad_root  # noqa: E402
-ROOT = resolve_tcad_root(os.environ.get("TCAD_ROOT"))
+from _tcad_yaml import load_yaml  # noqa: E402
+ROOT = resolve_tcad_root(os.environ.get("FOREMAN_ROOT") or os.environ.get("TCAD_ROOT"))
 PROTOCOL_DIR = ROOT / ".protocol"
 BOUNDARIES_FILE = PROTOCOL_DIR / "boundaries.yaml"
 BOUNDARIES_EXAMPLE = PROTOCOL_DIR / "boundaries.yaml.example"
@@ -55,122 +56,8 @@ STATUS_FILE = PROTOCOL_DIR / "status.json"
 HANDOFFS_DIR = PROTOCOL_DIR / "handoffs"
 
 
-# ---------------------------------------------------------------------------
-# Minimal YAML parser (reuse the one from studio/server.py philosophy)
-# ---------------------------------------------------------------------------
-class TinyYAML:
-    """Parse boundaries.yaml. Supports dict/list/scalar + comments + quoted strings."""
-
-    def __init__(self, text: str):
-        self.lines = text.splitlines()
-        self.pos = 0
-
-    def parse(self) -> Any:
-        result, _ = self._block(0)
-        return result
-
-    def _peek(self) -> str | None:
-        while self.pos < len(self.lines):
-            line = self.lines[self.pos]
-            if line.strip() == "" or line.strip().startswith("#"):
-                self.pos += 1
-                continue
-            return line
-        return None
-
-    def _indent(self, line: str) -> int:
-        return len(line) - len(line.lstrip(" "))
-
-    def _scalar(self, raw: str) -> Any:
-        raw = raw.strip()
-        # strip inline comment if not inside quotes
-        if raw and not (raw.startswith('"') or raw.startswith("'")):
-            raw = raw.split("#", 1)[0].rstrip()
-        if raw == "" or raw.lower() == "null" or raw == "~":
-            return None
-        if raw.lower() == "true":
-            return True
-        if raw.lower() == "false":
-            return False
-        if (raw.startswith('"') and raw.endswith('"')) or (
-            raw.startswith("'") and raw.endswith("'")
-        ):
-            return raw[1:-1]
-        try:
-            if "." in raw:
-                return float(raw)
-            return int(raw)
-        except ValueError:
-            return raw
-
-    def _block(self, indent: int):
-        line = self._peek()
-        if line is None:
-            return None, indent
-        li = self._indent(line)
-        if li < indent:
-            return None, li
-        s = line.lstrip(" ")
-        if s.startswith("- "):
-            items = []
-            while True:
-                line = self._peek()
-                if line is None:
-                    break
-                li = self._indent(line)
-                if li != indent:
-                    break
-                s = line.lstrip(" ")
-                if not s.startswith("- "):
-                    break
-                self.pos += 1
-                rest = s[2:]
-                if ":" in rest and not rest.startswith(('"', "'")):
-                    synth = " " * (indent + 2) + rest
-                    self.lines.insert(self.pos, synth)
-                    item, _ = self._block(indent + 2)
-                    items.append(item)
-                elif rest.strip() == "":
-                    item, _ = self._block(indent + 2)
-                    items.append(item)
-                else:
-                    items.append(self._scalar(rest))
-            return items, indent
-
-        result: dict[str, Any] = {}
-        while True:
-            line = self._peek()
-            if line is None:
-                break
-            li = self._indent(line)
-            if li != indent:
-                break
-            s = line.lstrip(" ")
-            if s.startswith("- "):
-                break
-            if ":" not in s:
-                self.pos += 1
-                continue
-            key, _, rest = s.partition(":")
-            key = key.strip()
-            self.pos += 1
-            rest_stripped = rest.split("#", 1)[0].rstrip() if not rest.lstrip().startswith(('"', "'")) else rest.rstrip()
-            if rest_stripped.strip() == "":
-                next_line = self._peek()
-                if next_line is None or self._indent(next_line) <= indent:
-                    result[key] = None
-                    continue
-                value, _ = self._block(self._indent(next_line))
-                result[key] = value
-            else:
-                result[key] = self._scalar(rest_stripped)
-        return result, indent
-
-
-def load_yaml(path: Path) -> dict | None:
-    if not path.exists():
-        return None
-    return TinyYAML(path.read_text(encoding="utf-8")).parse()
+# YAML parser moved to _tcad_yaml.py (Staff-engineer feedback fix). Imported
+# above as `load_yaml`. Single source of truth across scripts + studio.
 
 
 # ---------------------------------------------------------------------------

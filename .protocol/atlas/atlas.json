@@ -1,0 +1,745 @@
+{
+  "generated_at": "2026-05-22T20:34:45.473495+00:00",
+  "wps_total": 3,
+  "wp_summaries": [
+    {
+      "wp": "WP-001-atlas-a",
+      "role": "tests",
+      "branch": "wp/WP-001-atlas-a-tests",
+      "generated_at": "2026-05-22T20:34:44.051680+00:00",
+      "summary": {
+        "files_total": 1,
+        "files_created": 0,
+        "files_modified": 1,
+        "files_deleted": 0,
+        "additions": 3,
+        "deletions": 0
+      },
+      "review_pass": true,
+      "critical_count": 0,
+      "smoke_total": 1,
+      "smoke_passed": 1,
+      "layers_touched": [
+        "studio"
+      ]
+    },
+    {
+      "wp": "WP-002-atlas-b",
+      "role": "tests",
+      "branch": "wp/WP-002-atlas-b-tests",
+      "generated_at": "2026-05-22T20:34:44.718199+00:00",
+      "summary": {
+        "files_total": 1,
+        "files_created": 0,
+        "files_modified": 1,
+        "files_deleted": 0,
+        "additions": 3,
+        "deletions": 0
+      },
+      "review_pass": true,
+      "critical_count": 0,
+      "smoke_total": 1,
+      "smoke_passed": 1,
+      "layers_touched": [
+        "scripts"
+      ]
+    },
+    {
+      "wp": "WP-003-atlas-c",
+      "role": "tests",
+      "branch": "wp/WP-003-atlas-c-tests",
+      "generated_at": "2026-05-22T20:34:45.380179+00:00",
+      "summary": {
+        "files_total": 1,
+        "files_created": 0,
+        "files_modified": 1,
+        "files_deleted": 0,
+        "additions": 3,
+        "deletions": 0
+      },
+      "review_pass": true,
+      "critical_count": 0,
+      "smoke_total": 1,
+      "smoke_passed": 1,
+      "layers_touched": [
+        "scripts"
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "layer": "scripts",
+      "wps_touched_count": 2,
+      "wps_touched": [
+        "WP-002-atlas-b",
+        "WP-003-atlas-c"
+      ],
+      "files_changed_total": 2,
+      "distinct_files": 1,
+      "additions": 6,
+      "deletions": 0,
+      "critical_findings": 0
+    },
+    {
+      "layer": "studio",
+      "wps_touched_count": 1,
+      "wps_touched": [
+        "WP-001-atlas-a"
+      ],
+      "files_changed_total": 1,
+      "distinct_files": 1,
+      "additions": 3,
+      "deletions": 0,
+      "critical_findings": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "scripts/tcad_handoff.py",
+      "times_changed": 2,
+      "last_wp": "WP-003-atlas-c",
+      "wps": [
+        "WP-002-atlas-b",
+        "WP-003-atlas-c"
+      ]
+    },
+    {
+      "file": "studio/server.py",
+      "times_changed": 1,
+      "last_wp": "WP-001-atlas-a",
+      "wps": [
+        "WP-001-atlas-a"
+      ]
+    }
+  ],
+  "findings_by_wp": {},
+  "timeline": [
+    {
+      "ts": "2026-05-22T03:40:05.224149+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-001-demo-lean-backend",
+        "path": ".protocol/worktrees/WP-001-demo-lean-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T03:40:19.124723+00:00",
+      "event": "worktree_merged",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-001-demo-lean-backend",
+        "base": "master",
+        "strategy": "ff-only"
+      }
+    },
+    {
+      "ts": "2026-05-22T03:40:30.914611+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-demo-lean",
+      "role": "backend",
+      "extra": {
+        "slug": "WP-001-demo-lean-backend",
+        "branch": "wp/WP-001-demo-lean-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T03:40:31.048013+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-001-demo-lean-frontend",
+        "path": ".protocol/worktrees/WP-001-demo-lean-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T03:40:31.190399+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-demo-lean",
+      "role": "frontend",
+      "extra": {
+        "slug": "WP-001-demo-lean-frontend",
+        "branch": "wp/WP-001-demo-lean-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:35:05.211812+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-improve-close-summary-tests",
+        "path": ".protocol/worktrees/WP-001-improve-close-summary-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:35:58.493284+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-improve-close-summary-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-001-improve-close-summary",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T13:36:13.079158+00:00",
+      "event": "worktree_merged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-improve-close-summary-tests",
+        "base": "master",
+        "strategy": "ff-only"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:36:13.163193+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-improve-close-summary-tests",
+        "no_changes": true,
+        "journal_entry": "2026-05-22-001-WP-001-improve-close-summary",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T13:36:13.254675+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-improve-close-summary",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-001-improve-close-summary-tests",
+        "branch": "wp/WP-001-improve-close-summary-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:36:46.708626+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-002-studio-events-panel-frontend",
+        "path": ".protocol/worktrees/WP-002-studio-events-panel-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:37:25.011053+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-002-studio-events-panel-frontend",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-002-studio-events-panel",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T13:37:25.105801+00:00",
+      "event": "worktree_merged",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-002-studio-events-panel-frontend",
+        "base": "master",
+        "strategy": "ff-only"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:37:25.186862+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-002-studio-events-panel",
+      "role": "frontend",
+      "extra": {
+        "slug": "WP-002-studio-events-panel-frontend",
+        "branch": "wp/WP-002-studio-events-panel-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:38:56.405115+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-003-conflict-a-backend",
+        "path": ".protocol/worktrees/WP-003-conflict-a-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:38:56.522048+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-004-conflict-b-frontend",
+        "path": ".protocol/worktrees/WP-004-conflict-b-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:38:56.642956+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-003-conflict-a-backend",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-003-conflict-a",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T13:38:56.717896+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-004-conflict-b-frontend",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-004-conflict-b",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T13:38:56.813174+00:00",
+      "event": "worktree_merged",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-003-conflict-a-backend",
+        "base": "master",
+        "strategy": "ff-only"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:39:16.962855+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-003-conflict-a",
+      "role": "backend",
+      "extra": {
+        "slug": "WP-003-conflict-a-backend",
+        "branch": "wp/WP-003-conflict-a-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T13:39:17.055026+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-004-conflict-b",
+      "role": "frontend",
+      "extra": {
+        "slug": "WP-004-conflict-b-frontend",
+        "branch": "wp/WP-004-conflict-b-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.132313+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-001-fix6-a-backend",
+        "path": ".protocol/worktrees/WP-001-fix6-a-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.203619+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-002-fix6-b-frontend",
+        "path": ".protocol/worktrees/WP-002-fix6-b-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.284019+00:00",
+      "event": "worktree_merged",
+      "wp": null,
+      "role": "backend",
+      "extra": {
+        "branch": "wp/WP-001-fix6-a-backend",
+        "base": "master",
+        "strategy": "ff-only"
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.352894+00:00",
+      "event": "merge_conflict_detected",
+      "wp": null,
+      "role": "frontend",
+      "extra": {
+        "branch": "wp/WP-002-fix6-b-frontend",
+        "base": "master",
+        "kind": "ff_only_refused",
+        "stderr_excerpt": "hint: Diverging branches can't be fast-forwarded, you need to either:\nhint: \nhint: \tgit merge --no-ff\nhint: \nhint: or:\nhint: \nhint: \tgit rebase\nhint: \nhint: Disable this message with \"git config advice.diverging false\"\nfatal: Not possible to fast-forward, aborting."
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.444763+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-fix6-a",
+      "role": "backend",
+      "extra": {
+        "slug": "WP-001-fix6-a-backend",
+        "branch": "wp/WP-001-fix6-a-backend"
+      }
+    },
+    {
+      "ts": "2026-05-22T14:36:48.508683+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-002-fix6-b",
+      "role": "frontend",
+      "extra": {
+        "slug": "WP-002-fix6-b-frontend",
+        "branch": "wp/WP-002-fix6-b-frontend"
+      }
+    },
+    {
+      "ts": "2026-05-22T19:47:14.779791+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-graph-test-clean-tests",
+        "path": ".protocol/worktrees/WP-001-graph-test-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T19:47:46.137806+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-001-graph-test-clean",
+      "role": null,
+      "extra": {
+        "slug": "WP-001-graph-test-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T19:47:46.146934+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-graph-test-clean-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-001-graph-test-clean",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:06.979591+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-graph-test-clean",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-001-graph-test-clean-tests",
+        "branch": "wp/WP-001-graph-test-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:07.388989+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-graph-test-dup-tests",
+        "path": ".protocol/worktrees/WP-002-graph-test-dup-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:07.536918+00:00",
+      "event": "review_gate_failed",
+      "wp": "WP-002-graph-test-dup",
+      "role": null,
+      "extra": {
+        "slug": "WP-002-graph-test-dup-tests",
+        "critical_count": 1
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:07.675062+00:00",
+      "event": "review_gate_failed",
+      "wp": "WP-002-graph-test-dup",
+      "role": null,
+      "extra": {
+        "slug": "WP-002-graph-test-dup-tests",
+        "critical_count": 1
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:07.682719+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-graph-test-dup-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-002-graph-test-dup",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T19:48:27.220489+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-002-graph-test-dup",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-002-graph-test-dup-tests",
+        "branch": "wp/WP-002-graph-test-dup-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:40.480478+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-studio-clean-tests",
+        "path": ".protocol/worktrees/WP-001-studio-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:40.637700+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-001-studio-clean",
+      "role": null,
+      "extra": {
+        "slug": "WP-001-studio-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:40.644903+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-studio-clean-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-001-studio-clean",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:40.750607+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-studio-clean",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-001-studio-clean-tests",
+        "branch": "wp/WP-001-studio-clean-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:41.110650+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-studio-dup-tests",
+        "path": ".protocol/worktrees/WP-002-studio-dup-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:41.252613+00:00",
+      "event": "review_gate_failed",
+      "wp": "WP-002-studio-dup",
+      "role": null,
+      "extra": {
+        "slug": "WP-002-studio-dup-tests",
+        "critical_count": 1
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:41.263627+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-studio-dup-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-002-studio-dup",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:17:41.351320+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-002-studio-dup",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-002-studio-dup-tests",
+        "branch": "wp/WP-002-studio-dup-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:26:59.409529+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-profile-test-tests",
+        "path": ".protocol/worktrees/WP-001-profile-test-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:26:59.579756+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-001-profile-test",
+      "role": null,
+      "extra": {
+        "slug": "WP-001-profile-test-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:26:59.589632+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-profile-test-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-001-profile-test",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:26:59.688801+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-profile-test",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-001-profile-test-tests",
+        "branch": "wp/WP-001-profile-test-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:43.831780+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-atlas-a-tests",
+        "path": ".protocol/worktrees/WP-001-atlas-a-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:43.997246+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-001-atlas-a",
+      "role": null,
+      "extra": {
+        "slug": "WP-001-atlas-a-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.005995+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-001-atlas-a-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-001-atlas-a",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.104617+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-001-atlas-a",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-001-atlas-a-tests",
+        "branch": "wp/WP-001-atlas-a-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.515137+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-atlas-b-tests",
+        "path": ".protocol/worktrees/WP-002-atlas-b-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.660317+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-002-atlas-b",
+      "role": null,
+      "extra": {
+        "slug": "WP-002-atlas-b-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.667678+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-002-atlas-b-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-002-atlas-b",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:44.788537+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-002-atlas-b",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-002-atlas-b-tests",
+        "branch": "wp/WP-002-atlas-b-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:45.184809+00:00",
+      "event": "worktree_created",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-003-atlas-c-tests",
+        "path": ".protocol/worktrees/WP-003-atlas-c-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:45.324820+00:00",
+      "event": "review_gate_passed",
+      "wp": "WP-003-atlas-c",
+      "role": null,
+      "extra": {
+        "slug": "WP-003-atlas-c-tests"
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:45.334852+00:00",
+      "event": "wp_evidence_logged",
+      "wp": null,
+      "role": "tests",
+      "extra": {
+        "branch": "wp/WP-003-atlas-c-tests",
+        "no_changes": false,
+        "journal_entry": "2026-05-22-001-WP-003-atlas-c",
+        "validation_errors": []
+      }
+    },
+    {
+      "ts": "2026-05-22T20:34:45.432229+00:00",
+      "event": "worktree_destroyed",
+      "wp": "WP-003-atlas-c",
+      "role": "tests",
+      "extra": {
+        "slug": "WP-003-atlas-c-tests",
+        "branch": "wp/WP-003-atlas-c-tests"
+      }
+    }
+  ]
+}

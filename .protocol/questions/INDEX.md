@@ -106,3 +106,29 @@ fatal: Not possible to fast-forward, aborting.
 ```
 
 **Question**: base 'master' advanced after this worktree was created. Choose: rebase, no-ff merge, or split into contract WP.
+
+## Q-REV-WP-002-graph-test-dup-tests — Reviewer gate blocked WP-002-graph-test-dup-tests
+
+**Status**: 🟡 pending
+**Raised by**: tcad_review
+**Blocks**: close, merge
+
+**Evidence**:
+- duplicate_symbol: Function 'load_yaml' declared 2 times in /home/miguel/projects/framework/.protocol/worktrees/WP-002-graph-test-dup-tests/studio/server.py. Modify the existing one instead of adding a duplicate.
+    at /home/miguel/projects/framework/.protocol/worktrees/WP-002-graph-test-dup-tests/studio/server.py:244
+    at /home/miguel/projects/framework/.protocol/worktrees/WP-002-graph-test-dup-tests/studio/server.py:664
+
+**Question**: should the WP modify the existing implementation instead of duplicating? Or is this an intentional override (document in 04_existing_decisions.md)?
+
+## Q-REV-WP-002-studio-dup-tests — Reviewer gate blocked WP-002-studio-dup-tests
+
+**Status**: 🟡 pending
+**Raised by**: tcad_review
+**Blocks**: close, merge
+
+**Evidence**:
+- duplicate_symbol: Function 'load_yaml' declared 2 times in /home/miguel/projects/framework/.protocol/worktrees/WP-002-studio-dup-tests/studio/server.py. Modify the existing one instead of adding a duplicate.
+    at /home/miguel/projects/framework/.protocol/worktrees/WP-002-studio-dup-tests/studio/server.py:244
+    at /home/miguel/projects/framework/.protocol/worktrees/WP-002-studio-dup-tests/studio/server.py:664
+
+**Question**: should the WP modify the existing implementation instead of duplicating? Or is this an intentional override (document in 04_existing_decisions.md)?

@@ -37,7 +37,7 @@ SCRIPT_PATH = Path(__file__).resolve()
 sys.path.insert(0, str(SCRIPT_PATH.parent))
 from _tcad_root import resolve_tcad_root  # noqa: E402
 
-ROOT = resolve_tcad_root(os.environ.get("TCAD_ROOT"))
+ROOT = resolve_tcad_root(os.environ.get("FOREMAN_ROOT") or os.environ.get("TCAD_ROOT"))
 PROTOCOL = ROOT / ".protocol"
 
 

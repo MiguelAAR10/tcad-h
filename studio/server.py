@@ -46,7 +46,16 @@ from typing import Any
 # ---------------------------------------------------------------------------
 SCRIPT_PATH = Path(__file__).resolve()
 STUDIO_DIR = SCRIPT_PATH.parent
-ROOT = STUDIO_DIR.parent
+# Phase 3.5+: import shared YAML + root resolver
+import sys as _sys
+_sys.path.insert(0, str(STUDIO_DIR.parent / "scripts"))
+try:
+    from _tcad_root import resolve_tcad_root  # type: ignore
+    from _tcad_yaml import load_yaml as _shared_load_yaml  # type: ignore
+    ROOT = resolve_tcad_root(os.environ.get("FOREMAN_ROOT") or os.environ.get("TCAD_ROOT"))
+except Exception:
+    ROOT = STUDIO_DIR.parent
+    _shared_load_yaml = None
 PROTOCOL_DIR = ROOT / ".protocol"
 BLUEPRINT_FILE = ROOT / ".protocol" / "blueprint" / "blueprint.yaml"
 BLUEPRINT_EXAMPLE = ROOT / ".protocol" / "blueprint" / "blueprint.yaml.example"
@@ -242,6 +251,11 @@ class TinyYAML:
 
 
 def load_yaml(path: Path) -> dict | None:
+    """Wrapper using the shared scripts/_tcad_yaml.py parser when available,
+    falling back to the locally-bundled TinyYAML for environments where the
+    scripts/ dir is not on sys.path (rare; only if studio is moved)."""
+    if _shared_load_yaml is not None:
+        return _shared_load_yaml(path)
     if not path.exists():
         return None
     try:
